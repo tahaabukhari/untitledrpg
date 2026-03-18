@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://qhcfeyub4mf8"]
+
+[ext_resource type="Script" path="res://dieo.gd" id="1_50rxd"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_3py5n"]
+
+[sub_resource type="Gradient" id="Gradient_6ghx2"]
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_4qyjl"]
+gradient = SubResource("Gradient_6ghx2")
+
+[node name="deo" type="Node2D"]
+script = ExtResource("1_50rxd")
+
+[node name="deo-test" type="CharacterBody2D" parent="."]
+
+[node name="hitbox" type="CollisionShape2D" parent="deo-test"]
+shape = SubResource("CircleShape2D_3py5n")
+
+[node name="Sprite2D" type="Sprite2D" parent="deo-test"]
+position = Vector2(-3.55271e-15, -2)
+scale = Vector2(0.0507813, 24.375)
+texture = SubResource("GradientTexture1D_4qyjl")

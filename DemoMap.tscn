@@ -1,0 +1,275 @@
+[gd_scene load_steps=10 format=3 uid="uid://cvfguemr3rmoq"]
+
+[ext_resource type="PackedScene" uid="uid://qjw5vpdkfuts" path="res://player.tscn" id="1_50nqk"]
+[ext_resource type="PackedScene" uid="uid://cwjn6gnfcr1oc" path="res://slime.tscn" id="3_avh0l"]
+[ext_resource type="PackedScene" uid="uid://qhcfeyub4mf8" path="res://dieo.tscn" id="3_c1t37"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_yw2jd"]
+size = Vector2(1663.52, 113.762)
+
+[sub_resource type="Gradient" id="Gradient_2ot71"]
+offsets = PackedFloat32Array(0, 0.350649, 0.493506, 0.590909, 0.746753, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.18148, 0.13854, 0.181504, 1, 0.35434, 0.35434, 0.35434, 1, 0.122458, 0.0536776, 0.133532, 1, 0.412152, 0.412152, 0.412152, 1, 0, 0, 0, 1)
+metadata/_snap_count = 11
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_dcsjd"]
+gradient = SubResource("Gradient_2ot71")
+width = 257
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4jxmo"]
+size = Vector2(105, 91)
+
+[sub_resource type="Gradient" id="Gradient_aur40"]
+colors = PackedColorArray(0, 0, 0, 1, 0.176419, 0.176419, 0.176419, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_byso2"]
+gradient = SubResource("Gradient_aur40")
+
+[node name="DEMOWORLD" type="Node2D"]
+position = Vector2(-1015, -28)
+
+[node name="FLOOR" type="StaticBody2D" parent="."]
+position = Vector2(0, 10)
+
+[node name="FLOORCOMPONENT" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(873, 604.969)
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT8" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(-1879, 603)
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT8"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT5" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(2513, 2309)
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT5"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT6" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(4105, 2421)
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT6"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT7" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(5753, 2301)
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT7"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT2" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(-616, 714)
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT2"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT3" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(1696, 1474)
+rotation = 1.5671
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT3"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT4" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(1979, 1221)
+rotation = 1.5671
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT4"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT10" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(-2637, -271)
+rotation = 1.5671
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT10"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT11" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(1990.15, -320.262)
+rotation = 1.5671
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT11"]
+position = Vector2(76.9183, 0.0304928)
+scale = Vector2(6.30752, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT12" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(3612, 1140)
+rotation = 1.5671
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT12"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT13" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(6591, 1481)
+rotation = 1.5671
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT13"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT14" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(2974, -232)
+rotation = 0.701928
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT14"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT15" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(2618, -576)
+rotation = 0.701928
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT15"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="FLOORCOMPONENT9" type="CollisionShape2D" parent="FLOOR"]
+position = Vector2(2829, 2022)
+rotation = 3.14792
+shape = SubResource("RectangleShape2D_yw2jd")
+
+[node name="Sprite2D" type="Sprite2D" parent="FLOOR/FLOORCOMPONENT9"]
+position = Vector2(5.00011, 0.0304928)
+scale = Vector2(6.86719, 112)
+texture = SubResource("GradientTexture1D_dcsjd")
+
+[node name="Player" parent="." instance=ExtResource("1_50nqk")]
+position = Vector2(209, 499)
+
+[node name="wall" type="StaticBody2D" parent="."]
+position = Vector2(4399, 1175)
+
+[node name="WallComponent" type="CollisionShape2D" parent="wall"]
+position = Vector2(979, 1028)
+rotation = 2.06645
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent2" type="CollisionShape2D" parent="wall"]
+position = Vector2(771, 839)
+rotation = 2.06645
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent2"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent3" type="CollisionShape2D" parent="wall"]
+position = Vector2(678, 788)
+rotation = 0.478397
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent3"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent4" type="CollisionShape2D" parent="wall"]
+position = Vector2(561, 713)
+rotation = 0.527098
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent4"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent5" type="CollisionShape2D" parent="wall"]
+position = Vector2(345, 684)
+rotation = 0.0926247
+scale = Vector2(1.44269, 0.853829)
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent5"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent6" type="CollisionShape2D" parent="wall"]
+position = Vector2(1119, 922)
+rotation = 0.0926247
+scale = Vector2(1.44269, 0.853829)
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent6"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent7" type="CollisionShape2D" parent="wall"]
+position = Vector2(145, 567)
+rotation = 0.0926247
+scale = Vector2(1.44269, 0.853829)
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent7"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="WallComponent8" type="CollisionShape2D" parent="wall"]
+position = Vector2(145, 567)
+rotation = 0.0926247
+scale = Vector2(1.44269, 0.853829)
+shape = SubResource("RectangleShape2D_4jxmo")
+
+[node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent8"]
+position = Vector2(16.4998, 3.8147e-06)
+scale = Vector2(0.535156, 96)
+texture = SubResource("GradientTexture1D_byso2")
+
+[node name="deo" parent="." instance=ExtResource("3_c1t37")]
+position = Vector2(1254, 495)
+
+[node name="slime" parent="." instance=ExtResource("3_avh0l")]
+position = Vector2(1184, 533)
+
+[editable path="Player"]
+[editable path="Player/TouchControls"]

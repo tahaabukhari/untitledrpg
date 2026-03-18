@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://ihsv26smf0nv"]
+
+[ext_resource type="Script" path="res://whisperer.gd" id="1_3cyjy"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_2dyno"]
+
+[sub_resource type="Gradient" id="Gradient_54mcc"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.734078, 0, 0.161373, 1, 0.968517, 0.853412, 0.872563, 1, 0.914867, 0.0612006, 0.169558, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_c0olm"]
+gradient = SubResource("Gradient_54mcc")
+
+[node name="Whisperer" type="CharacterBody2D"]
+script = ExtResource("1_3cyjy")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_2dyno")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(-2.38419e-07, 0)
+scale = Vector2(0.0683593, 17.25)
+texture = SubResource("GradientTexture1D_c0olm")

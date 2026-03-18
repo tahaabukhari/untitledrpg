@@ -1,0 +1,134 @@
+[gd_scene load_steps=6 format=3 uid="uid://dmhx1vjxbl1ye"]
+
+[ext_resource type="Script" path="res://pausemenu.gd" id="1_1muy7"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_3jvvy"]
+radius = 60.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_w58vt"]
+radius = 60.69
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_oe6il"]
+size = Vector2(120, 60)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hv3l7"]
+size = Vector2(130, 70)
+
+[node name="TouchControls" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="JOYSTICK" type="Control" parent="."]
+anchors_preset = 0
+offset_left = 126.0
+offset_top = 304.0
+offset_right = 166.0
+offset_bottom = 344.0
+
+[node name="Base" type="Panel" parent="JOYSTICK"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Thumb" type="Panel" parent="JOYSTICK"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="AttackButton" type="TouchScreenButton" parent="."]
+position = Vector2(1118, 358)
+shape = SubResource("CircleShape2D_3jvvy")
+
+[node name="Button" type="Button" parent="AttackButton"]
+offset_left = -62.0
+offset_top = -52.0
+offset_right = 59.0
+offset_bottom = 57.0
+text = "ATTACK"
+
+[node name="JumpButton" type="TouchScreenButton" parent="."]
+position = Vector2(1277, 471)
+shape = SubResource("CircleShape2D_3jvvy")
+
+[node name="Button" type="Button" parent="JumpButton"]
+offset_left = -53.0
+offset_top = -39.0
+offset_right = 57.0
+offset_bottom = 55.0
+text = "JUMP
+"
+
+[node name="EvadeButton" type="TouchScreenButton" parent="."]
+position = Vector2(1287, 271)
+shape = SubResource("CircleShape2D_w58vt")
+
+[node name="Button" type="Button" parent="EvadeButton"]
+offset_left = -58.0
+offset_top = -45.0
+offset_right = 57.0
+offset_bottom = 54.0
+text = "EVADE
+"
+
+[node name="PauseButton" type="TouchScreenButton" parent="."]
+position = Vector2(700, 80)
+shape = SubResource("RectangleShape2D_oe6il")
+
+[node name="Button" type="Button" parent="PauseButton"]
+offset_left = -58.0
+offset_top = -32.0
+offset_right = 60.0
+offset_bottom = 29.0
+text = "PAUSE"
+
+[node name="PAUSEMENU" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 440.0
+script = ExtResource("1_1muy7")
+pause_button_path = NodePath("../PauseButton")
+
+[node name="Resume" type="Button" parent="PAUSEMENU"]
+layout_mode = 2
+offset_left = 142.0
+offset_top = 97.0
+offset_right = 276.0
+offset_bottom = 168.0
+text = "RESUME"
+
+[node name="RESUMEBUTTON" type="TouchScreenButton" parent="PAUSEMENU/Resume"]
+position = Vector2(64, 34)
+shape = SubResource("RectangleShape2D_hv3l7")
+
+[node name="Retry" type="Button" parent="PAUSEMENU"]
+layout_mode = 2
+offset_left = 142.0
+offset_top = 189.0
+offset_right = 276.0
+offset_bottom = 260.0
+text = "RETRY"
+
+[node name="RETRYBUTTON" type="TouchScreenButton" parent="PAUSEMENU/Retry"]
+position = Vector2(69, 33)
+shape = SubResource("RectangleShape2D_hv3l7")
+
+[node name="Return" type="Button" parent="PAUSEMENU"]
+layout_mode = 2
+offset_left = 144.0
+offset_top = 296.0
+offset_right = 278.0
+offset_bottom = 367.0
+text = "RETURN"
+
+[node name="RETURNBUTTON" type="TouchScreenButton" parent="PAUSEMENU/Return"]
+position = Vector2(69, 39)
+shape = SubResource("RectangleShape2D_hv3l7")
+
+[connection signal="pressed" from="PauseButton" to="PAUSEMENU" method="_on_pause_button_pressed"]
+[connection signal="pressed" from="PAUSEMENU/Resume/RESUMEBUTTON" to="PAUSEMENU" method="_on_resumebutton_pressed"]
+[connection signal="pressed" from="PAUSEMENU/Retry/RETRYBUTTON" to="PAUSEMENU" method="_on_retrybutton_pressed"]
+[connection signal="pressed" from="PAUSEMENU/Return/RETURNBUTTON" to="PAUSEMENU" method="_on_returnbutton_pressed"]

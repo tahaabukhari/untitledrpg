@@ -1,0 +1,81 @@
+[gd_scene load_steps=8 format=3 uid="uid://qjw5vpdkfuts"]
+
+[ext_resource type="Script" path="res://playercontroller.gd" id="1_5eqdt"]
+[ext_resource type="PackedScene" uid="uid://dmhx1vjxbl1ye" path="res://touchcontrols.tscn" id="2_ntdwc"]
+[ext_resource type="Script" path="res://joystick.gd" id="3_8ed26"]
+[ext_resource type="Script" path="res://player_hud.gd" id="4_hud"]
+[ext_resource type="PackedScene" path="res://player_inventory_ui.tscn" id="5_inv"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_f41kl"]
+
+[sub_resource type="CanvasTexture" id="CanvasTexture_nsocr"]
+
+[node name="Player" type="CharacterBody2D"]
+script = ExtResource("1_5eqdt")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_f41kl")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, 0.5)
+scale = Vector2(22, 21)
+texture = SubResource("CanvasTexture_nsocr")
+
+[node name="Camera" type="Camera2D" parent="."]
+zoom = Vector2(2, 2)
+
+[node name="TouchControls" parent="." instance=ExtResource("2_ntdwc")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = -357.0
+offset_top = -161.0
+offset_right = -357.0
+offset_bottom = -161.0
+grow_horizontal = 1
+grow_vertical = 1
+scale = Vector2(0.517124, 0.578729)
+
+[node name="JOYSTICK" parent="TouchControls" index="0"]
+offset_left = 127.629
+offset_top = 279.924
+offset_right = 167.629
+offset_bottom = 319.924
+scale = Vector2(0.7, 0.7)
+script = ExtResource("3_8ed26")
+
+[node name="AttackButton" parent="TouchControls" index="1"]
+position = Vector2(1067.44, 311.026)
+
+[node name="JumpButton" parent="TouchControls" index="2"]
+position = Vector2(1251.15, 433.709)
+
+[node name="PAUSEMENU" parent="TouchControls" index="5"]
+scale = Vector2(0.921864, 0.898189)
+
+[node name="AttackDirection" type="Label" parent="."]
+offset_left = -20.0
+offset_top = -55.0
+offset_right = 20.0
+offset_bottom = -32.0
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="PlayerHUD" type="Control" parent="HUDLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_hud")
+
+[node name="InventoryUI" parent="HUDLayer" instance=ExtResource("5_inv")]
+
+[connection signal="pressed" from="TouchControls/AttackButton" to="." method="_on_attack_button_pressed"]
+[connection signal="pressed" from="TouchControls/JumpButton" to="." method="_on_jump_button_pressed"]
+[connection signal="pressed" from="TouchControls/EvadeButton" to="." method="_on_evade_button_pressed"]
+
+[editable path="TouchControls"]
