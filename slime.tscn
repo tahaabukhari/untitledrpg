@@ -1,8 +1,8 @@
 [gd_scene load_steps=9 format=3 uid="uid://cwjn6gnfcr1oc"]
 
 [ext_resource type="Script" path="res://slime.gd" id="1_00to6"]
-[ext_resource type="Texture2D" uid="uid://c2y1aun155j8p" path="res://animations/slime/slime-Sheet.png" id="2_slime"]
-[ext_resource type="Texture2D" uid="uid://dt2vrgq024lwg" path="res://animations/slime/slime-attacked-Sheet.png" id="3_attacked"]
+[ext_resource type="Texture2D" uid="uid://c2y1aun155j8p" path="res://sprites/animations/slime/slime-Sheet.png" id="2_slime"]
+[ext_resource type="Texture2D" uid="uid://dt2vrgq024lwg" path="res://sprites/animations/slime/slime-attacked-Sheet.png" id="3_attacked"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_2dyno"]
 

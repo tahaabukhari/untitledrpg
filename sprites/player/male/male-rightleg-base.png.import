@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c2y1aun155j8p"
-path="res://.godot/imported/slime-Sheet.png-4bca66a63eaf28cc1b499d96f8475334.ctex"
+uid="uid://b0skeaw2jl262"
+path="res://.godot/imported/male-rightleg-base.png-51dc0231ba42b7e2a71132e5b20add6d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://animations/slime/slime-Sheet.png"
-dest_files=["res://.godot/imported/slime-Sheet.png-4bca66a63eaf28cc1b499d96f8475334.ctex"]
+source_file="res://sprites/player/male/male-rightleg-base.png"
+dest_files=["res://.godot/imported/male-rightleg-base.png-51dc0231ba42b7e2a71132e5b20add6d.ctex"]
 
 [params]
 

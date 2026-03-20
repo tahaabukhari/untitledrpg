@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dt2vrgq024lwg"
-path="res://.godot/imported/slime-attacked-Sheet.png-e1ec7b51d2a06d9f0f13d3a63acb407a.ctex"
+uid="uid://c2lu4xowg877c"
+path="res://.godot/imported/male-head-base.png-4a4e9cb2ca4ace9850523aef399cd390.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://animations/slime/slime-attacked-Sheet.png"
-dest_files=["res://.godot/imported/slime-attacked-Sheet.png-e1ec7b51d2a06d9f0f13d3a63acb407a.ctex"]
+source_file="res://sprites/player/male/male-head-base.png"
+dest_files=["res://.godot/imported/male-head-base.png-4a4e9cb2ca4ace9850523aef399cd390.ctex"]
 
 [params]
 

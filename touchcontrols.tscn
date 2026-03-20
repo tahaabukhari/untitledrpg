@@ -1,6 +1,7 @@
-[gd_scene load_steps=6 format=3 uid="uid://dmhx1vjxbl1ye"]
+[gd_scene load_steps=7 format=3 uid="uid://dmhx1vjxbl1ye"]
 
 [ext_resource type="Script" path="res://pausemenu.gd" id="1_1muy7"]
+[ext_resource type="Script" path="res://attack_button_ring.gd" id="2_atkring"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_3jvvy"]
 radius = 60.0
@@ -43,12 +44,12 @@ offset_bottom = 40.0
 position = Vector2(1118, 358)
 shape = SubResource("CircleShape2D_3jvvy")
 
-[node name="Button" type="Button" parent="AttackButton"]
-offset_left = -62.0
-offset_top = -52.0
-offset_right = 59.0
-offset_bottom = 57.0
-text = "ATTACK"
+[node name="RingUI" type="Control" parent="AttackButton"]
+offset_left = -56.0
+offset_top = -56.0
+offset_right = 56.0
+offset_bottom = 56.0
+script = ExtResource("2_atkring")
 
 [node name="JumpButton" type="TouchScreenButton" parent="."]
 position = Vector2(1277, 471)

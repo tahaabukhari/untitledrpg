@@ -39,6 +39,8 @@ var aggro_timer: float = 0.0
 var hop_timer: float = 0.0
 var gravity: float = 0.0
 var is_hopping: bool = false
+var hp: int = 50
+var is_dead: bool = false
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -52,9 +54,19 @@ func _ready() -> void:
 	# Find the player (make sure the player node is in the "player" group)
 	player = get_tree().get_first_node_in_group("player")
 
+	# Add to enemy group for combat detection
+	add_to_group("enemy")
+
 	# Apply random scale between min_scale and max_scale
 	var random_scale: float = randf_range(min_scale, max_scale)
 	scale = Vector2(random_scale, random_scale)
+
+	# HP scales with size: small=20, big=100
+	var size_ratio: float = (random_scale - min_scale) / maxf(max_scale - min_scale, 0.01)
+	hp = int(lerpf(20.0, 100.0, size_ratio))
+
+	# Set collision layer to 4 so player hitbox (mask 4) can detect us
+	collision_layer = 4
 
 	# Set initial hop cooldown
 	hop_timer = randf_range(hop_cooldown_min, hop_cooldown_max)
@@ -185,3 +197,53 @@ func _hit_wall() -> bool:
 		if abs(col.get_normal().x) > 0.7:
 			return true
 	return false
+
+
+# ─── Combat ──────────────────────────────────────────────────────────────────
+
+func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
+	if is_dead:
+		return
+	hp -= amount
+	_flash_red()
+	_spawn_damage_number(amount)
+	# Apply knockback impulse
+	if knockback.length() > 0:
+		velocity = knockback
+	if hp <= 0:
+		hp = 0
+		_die()
+
+
+func _flash_red() -> void:
+	if sprite:
+		sprite.modulate = Color(1, 0.2, 0.2, 1)
+		var tw = create_tween()
+		tw.tween_property(sprite, "modulate", Color(1, 1, 1, 1), 0.15)
+
+
+func _spawn_damage_number(amount: int) -> void:
+	var label = Label.new()
+	label.text = str(amount)
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
+	label.global_position = global_position + Vector2(randf_range(-8, 8), -20)
+	label.z_index = 100
+	get_tree().current_scene.add_child(label)
+
+	var tw = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "global_position:y", label.global_position.y - 30, 0.6).set_ease(Tween.EASE_OUT)
+	tw.tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.3)
+	tw.chain().tween_callback(label.queue_free)
+
+
+func _die() -> void:
+	is_dead = true
+	# Give EXP to player
+	if player and player.has_method("add_exp"):
+		player.add_exp(10.0)
+	# Fade out and remove
+	var tw = create_tween()
+	tw.tween_property(self, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(queue_free)

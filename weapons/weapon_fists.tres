@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://b06nfno4ga8h0"]
+
+[ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+weapon_name = "Fists"
+atk_min = 2
+atk_max = 4
+attack_cooldown = 0.0
+stamina_cost = 0.0
+charged_damage = 10
+charged_knockback = 300.0
+charged_stamina_cost = 70.0
+charge_time = 1.0
+attack_right_anim = "attack_right"
+attack_left_anim = "attack_left"
+charged_anim = "uppercut"

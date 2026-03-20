@@ -1,27 +1,114 @@
-[gd_scene load_steps=8 format=3 uid="uid://qjw5vpdkfuts"]
+[gd_scene load_steps=17 format=3 uid="uid://qjw5vpdkfuts"]
 
 [ext_resource type="Script" path="res://playercontroller.gd" id="1_5eqdt"]
 [ext_resource type="PackedScene" uid="uid://dmhx1vjxbl1ye" path="res://touchcontrols.tscn" id="2_ntdwc"]
 [ext_resource type="Script" path="res://joystick.gd" id="3_8ed26"]
 [ext_resource type="Script" path="res://player_hud.gd" id="4_hud"]
 [ext_resource type="PackedScene" path="res://player_inventory_ui.tscn" id="5_inv"]
+[ext_resource type="Texture2D" uid="uid://dsb8g58wasoeb" path="res://sprites/player/male/male-torso-base.png" id="6_torso"]
+[ext_resource type="Texture2D" uid="uid://c2lu4xowg877c" path="res://sprites/player/male/male-head-base.png" id="7_head"]
+[ext_resource type="Texture2D" uid="uid://c48wbv8jbl4ri" path="res://sprites/player/male/male-face-base.png" id="8_face"]
+[ext_resource type="Texture2D" uid="uid://b5d8qu4gaxgx6" path="res://sprites/player/male/male-hair-base.png" id="9_hair"]
+[ext_resource type="Texture2D" uid="uid://bb2j8lxfmg00e" path="res://sprites/player/male/male-lefthand-base.png" id="10_lhand"]
+[ext_resource type="Texture2D" uid="uid://cwxki8uq8nx28" path="res://sprites/player/male/male-righthand-base.png" id="11_rhand"]
+[ext_resource type="Texture2D" uid="uid://djvy0olousti" path="res://sprites/player/male/male-leftleg-base.png" id="12_lleg"]
+[ext_resource type="Texture2D" uid="uid://b0skeaw2jl262" path="res://sprites/player/male/male-rightleg-base.png" id="13_rleg"]
+[ext_resource type="Script" path="res://player_animator.gd" id="14_anim"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_f41kl"]
+size = Vector2(20, 50)
 
-[sub_resource type="CanvasTexture" id="CanvasTexture_nsocr"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_atkhit"]
+size = Vector2(8, 16)
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_5eqdt")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(2, 3)
 shape = SubResource("RectangleShape2D_f41kl")
 
-[node name="Sprite" type="Sprite2D" parent="."]
-position = Vector2(0, 0.5)
-scale = Vector2(22, 21)
-texture = SubResource("CanvasTexture_nsocr")
+[node name="GroundRay" type="RayCast2D" parent="."]
+target_position = Vector2(0, 2000)
+
+[node name="PlayerSkin" type="Node2D" parent="."]
+scale = Vector2(2, 2)
+script = ExtResource("14_anim")
+
+[node name="AnimPlayer" type="AnimationPlayer" parent="PlayerSkin"]
+
+[node name="LeftLegPivot" type="Node2D" parent="PlayerSkin"]
+position = Vector2(-1, 4)
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/LeftLegPivot"]
+z_index = -2
+position = Vector2(1, -4.5)
+texture = ExtResource("12_lleg")
+
+[node name="RightLegPivot" type="Node2D" parent="PlayerSkin"]
+position = Vector2(0, 4)
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/RightLegPivot"]
+z_index = -2
+position = Vector2(0, -4.5)
+texture = ExtResource("13_rleg")
+
+[node name="TorsoPivot" type="Node2D" parent="PlayerSkin"]
+position = Vector2(0, -0.5)
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/TorsoPivot"]
+texture = ExtResource("6_torso")
+
+[node name="RightArmPivot" type="Node2D" parent="PlayerSkin"]
+position = Vector2(-6, -4.5)
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/RightArmPivot"]
+z_index = 2
+position = Vector2(6, 4)
+texture = ExtResource("11_rhand")
+
+[node name="LeftArmPivot" type="Node2D" parent="PlayerSkin"]
+position = Vector2(6, -4.5)
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/LeftArmPivot"]
+z_index = 2
+position = Vector2(-6, 4)
+texture = ExtResource("10_lhand")
+
+[node name="HeadPivot" type="Node2D" parent="PlayerSkin"]
+position = Vector2(0, -7.5)
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/HeadPivot"]
+z_index = 2
+position = Vector2(0, 7)
+texture = ExtResource("7_head")
+
+[node name="FacePivot" type="Node2D" parent="PlayerSkin/HeadPivot"]
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/HeadPivot/FacePivot"]
+z_index = 3
+position = Vector2(0, 7)
+texture = ExtResource("8_face")
+
+[node name="HairPivot" type="Node2D" parent="PlayerSkin/HeadPivot"]
+
+[node name="Sprite" type="Sprite2D" parent="PlayerSkin/HeadPivot/HairPivot"]
+z_index = 4
+position = Vector2(0, 7)
+texture = ExtResource("9_hair")
+
+[node name="AttackHitbox" type="Area2D" parent="PlayerSkin"]
+collision_layer = 2
+collision_mask = 4
+monitorable = false
+
+[node name="HitShape" type="CollisionShape2D" parent="PlayerSkin/AttackHitbox"]
+position = Vector2(12, 0)
+shape = SubResource("RectangleShape2D_atkhit")
+disabled = true
 
 [node name="Camera" type="Camera2D" parent="."]
+unique_name_in_owner = true
 zoom = Vector2(2, 2)
 
 [node name="TouchControls" parent="." instance=ExtResource("2_ntdwc")]
@@ -46,6 +133,14 @@ script = ExtResource("3_8ed26")
 
 [node name="AttackButton" parent="TouchControls" index="1"]
 position = Vector2(1067.44, 311.026)
+
+[node name="RingUI" parent="TouchControls/AttackButton" index="0"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 80.0
+offset_bottom = 80.0
 
 [node name="JumpButton" parent="TouchControls" index="2"]
 position = Vector2(1251.15, 433.709)
@@ -74,7 +169,8 @@ script = ExtResource("4_hud")
 
 [node name="InventoryUI" parent="HUDLayer" instance=ExtResource("5_inv")]
 
-[connection signal="pressed" from="TouchControls/AttackButton" to="." method="_on_attack_button_pressed"]
+[connection signal="attack_charged" from="TouchControls/AttackButton/RingUI" to="." method="_on_attack_charged"]
+[connection signal="attack_tapped" from="TouchControls/AttackButton/RingUI" to="." method="_on_attack_button_pressed"]
 [connection signal="pressed" from="TouchControls/JumpButton" to="." method="_on_jump_button_pressed"]
 [connection signal="pressed" from="TouchControls/EvadeButton" to="." method="_on_evade_button_pressed"]
 

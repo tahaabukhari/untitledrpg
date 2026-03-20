@@ -178,6 +178,10 @@ texture = SubResource("GradientTexture1D_dcsjd")
 [node name="Player" parent="." instance=ExtResource("1_50nqk")]
 position = Vector2(209, 499)
 
+[node name="RingUI" parent="Player/TouchControls/AttackButton" index="0"]
+layout_mode = 3
+anchors_preset = 0
+
 [node name="wall" type="StaticBody2D" parent="."]
 position = Vector2(4399, 1175)
 

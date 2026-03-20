@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-const SPEED = 300.0
+const SPEED = 350.0
 const JUMP_VELOCITY = -400.0
 const DASH_VELOCITY = 2000.0
 const DASH_TIME = 0.02
@@ -12,6 +12,8 @@ const ATTACK_TEXT_TIME = 0.5
 @onready var evade_button = $TouchControls/EvadeButton
 @onready var camera = %Camera
 @onready var attack_label = $AttackDirection
+@onready var player_skin = $PlayerSkin
+@onready var ground_ray: RayCast2D = $GroundRay
 
 var player_hud: Control = null
 var profile_ui = null
@@ -47,6 +49,15 @@ var dash_timer := 0.0
 var dash_cooldown := 0.0
 var is_dashing := false
 var dash_direction := Vector2.ZERO
+var fall_timer := 0.0
+const LONG_FALL_THRESHOLD := 2.0  # seconds before switching to long_fall anim
+
+# Combat — driven by equipped weapon
+@export var equipped_weapon: WeaponData = preload("res://weapons/weapon_fists.tres")
+var is_attacking := false
+var attack_cooldown_timer := 0.0
+var hit_enemies_this_swing: Array = []
+var current_attack_knockback := 0.0
 
 # Level, EXP, and Identity system
 var player_name := "Player"
@@ -75,10 +86,16 @@ func _ready():
 	add_to_group("player")
 	print("Joystick reference:", joystick)
 	joystick.joystick_moved.connect(_on_joystick_moved)
-	attack_button.pressed.connect(_on_attack_button_pressed)
 	evade_button.pressed.connect(_on_evade_button_pressed)
 	attack_label.text = ""
 	attack_label.visible = false
+
+	# Wire attack hitbox detection
+	if player_skin:
+		var hitbox = player_skin.get_node_or_null("AttackHitbox")
+		if hitbox:
+			hitbox.body_entered.connect(_on_attack_hit)
+		player_skin.attack_finished.connect(_on_attack_finished)
 	
 	# Load class stats from Global Autoload
 	var stats = Global.get_current_class_stats()
@@ -175,6 +192,8 @@ func _on_joystick_moved(movement: Vector2):
 	joystick_vector = movement
 	if abs(movement.x) > 0.1:
 		facing = sign(movement.x)
+		if player_skin:
+			player_skin.scale.x = abs(player_skin.scale.x) * facing
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Check if the player preview circle in HUD was touched/clicked
@@ -305,6 +324,43 @@ func _physics_process(delta: float) -> void:
 
 	update_bars()
 
+	# ── Animation state ──────────────────────────────────────────────────
+	if attack_cooldown_timer > 0.0:
+		attack_cooldown_timer -= delta
+	if player_skin and player_skin.has_method("play_state") and not is_attacking:
+		if not is_on_floor() and velocity.y < 0:
+			fall_timer = 0.0
+			player_skin.play_state("jump")
+		elif not is_on_floor() and velocity.y >= 0:
+			fall_timer += delta
+			var ground_dist := _get_ground_distance()
+			if ground_dist > 300.0:
+				player_skin.play_state("long_fall")
+			else:
+				player_skin.play_state("fall")
+		elif is_on_floor():
+			# Reset rotation when landing (long_fall rotates the skin)
+			if fall_timer > 0.0 and player_skin:
+				player_skin.rotation = 0.0
+			fall_timer = 0.0
+			if is_dashing:
+				player_skin.play_state("run")
+			elif abs(joystick_vector.x) > 0.6:
+				player_skin.play_state("run")
+			elif abs(joystick_vector.x) > 0.1:
+				player_skin.play_state("walk")
+			else:
+				player_skin.play_state("idle")
+
+
+func _get_ground_distance() -> float:
+	## Returns pixel distance to the ground below, or 9999 if no ground detected.
+	if not ground_ray or not ground_ray.is_colliding():
+		return 9999.0
+	var ground_point := ground_ray.get_collision_point()
+	var dist := ground_point.y - global_position.y
+	return maxf(dist, 0.0)
+
 func touching_wall_vertically() -> bool:
 	for i in get_slide_collision_count():
 		var col = get_slide_collision(i)
@@ -367,8 +423,17 @@ func get_wall_push_direction() -> int:
 	return 0
 
 func _on_attack_button_pressed() -> void:
+	if is_attacking or attack_cooldown_timer > 0.0:
+		return
+	if equipped_weapon.stamina_cost > 0 and stamina < equipped_weapon.stamina_cost:
+		return
 	stamina_regen_paused = true
+	if equipped_weapon.stamina_cost > 0:
+		stamina = max(stamina - equipped_weapon.stamina_cost, 0)
 	saturation = max(saturation - SAT_ACTION_COST, 0.0)
+	is_attacking = true
+	hit_enemies_this_swing.clear()
+	current_attack_knockback = 0.0
 	var dir = joystick_vector.normalized()
 	if dir.length() < 0.3:
 		dir = Vector2(facing, 0)
@@ -376,6 +441,64 @@ func _on_attack_button_pressed() -> void:
 	attack_label.text = text
 	attack_label.visible = true
 	attack_text_timer = ATTACK_TEXT_TIME
+	if player_skin and player_skin.has_method("play_attack"):
+		player_skin.play_attack()
+
+
+func _on_attack_charged() -> void:
+	if is_attacking:
+		return
+	if stamina < equipped_weapon.charged_stamina_cost:
+		return  # not enough stamina
+	stamina_regen_paused = true
+	stamina = max(stamina - equipped_weapon.charged_stamina_cost, 0)
+	saturation = max(saturation - SAT_ACTION_COST * 3, 0.0)
+	is_attacking = true
+	hit_enemies_this_swing.clear()
+	current_attack_knockback = equipped_weapon.charged_knockback
+	attack_label.text = "UPPERCUT!"
+	attack_label.visible = true
+	attack_text_timer = ATTACK_TEXT_TIME * 2
+	if player_skin and player_skin.has_method("play_uppercut"):
+		player_skin.play_uppercut()
+
+
+func _on_attack_finished() -> void:
+	is_attacking = false
+	attack_cooldown_timer = equipped_weapon.attack_cooldown
+
+
+func _on_attack_hit(body: Node2D) -> void:
+	if body.is_in_group("enemy") and body not in hit_enemies_this_swing:
+		hit_enemies_this_swing.append(body)
+		var dmg: int
+		if current_attack_knockback > 0:
+			dmg = equipped_weapon.charged_damage
+		else:
+			dmg = equipped_weapon.calc_damage(stat_atk)
+		var kb_dir := Vector2(facing, -0.3).normalized()
+		if body.has_method("take_damage"):
+			body.take_damage(dmg, kb_dir * current_attack_knockback)
+		_spawn_hit_particles(body.global_position)
+
+
+func calc_attack_damage() -> int:
+	return equipped_weapon.calc_damage(stat_atk)
+
+
+func _spawn_hit_particles(pos: Vector2) -> void:
+	for i in range(5):
+		var p = ColorRect.new()
+		p.size = Vector2(2, 2)
+		p.color = Color(1.0, 0.95, 0.6, 1.0)
+		p.global_position = pos + Vector2(randf_range(-6, 6), randf_range(-6, 6))
+		p.z_index = 100
+		get_tree().current_scene.add_child(p)
+		var tw = create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(p, "global_position:y", p.global_position.y - randf_range(8, 16), 0.25)
+		tw.tween_property(p, "modulate:a", 0.0, 0.25)
+		tw.chain().tween_callback(p.queue_free)
 
 func _on_jump_button_pressed() -> void:
 	stamina_regen_paused = true
