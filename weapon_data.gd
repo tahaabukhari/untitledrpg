@@ -5,6 +5,7 @@ class_name WeaponData
 
 @export_group("Identity")
 @export var weapon_name: String = "Fists"
+@export var weapon_description: String = "Your bare fists."
 @export var weapon_icon: Texture2D  # optional icon for UI
 
 @export_group("Normal Attack")

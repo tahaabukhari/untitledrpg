@@ -5,9 +5,11 @@ extends Node2D
 ## programmatically so any skin/equipment swap works automatically.
 
 @onready var anim_player: AnimationPlayer = $AnimPlayer
+@onready var weapon_sprite: Sprite2D = $WeaponSprite
 
 var current_state: String = ""
 var next_punch: String = "attack_right"  # alternates between right and left
+var has_weapon_equipped := false
 
 signal attack_finished
 
@@ -26,6 +28,37 @@ signal attack_finished
 func _ready() -> void:
 	_build_all_animations()
 	play_state("idle")
+
+
+# ─── Weapon Visuals ──────────────────────────────────────────────────────────
+
+func equip_weapon_visual(weapon: WeaponData) -> void:
+	has_weapon_equipped = true
+	if weapon_sprite and weapon.weapon_icon:
+		weapon_sprite.texture = weapon.weapon_icon
+		weapon_sprite.rotation = deg_to_rad(-60)
+		weapon_sprite.position = Vector2(-1, -2)  # centered on torso area
+		weapon_sprite.visible = true
+	# Reposition hands to grip the staff (two-handed)
+	var larm = get_node_or_null("LeftArmPivot")
+	var rarm = get_node_or_null("RightArmPivot")
+	if larm:
+		larm.position = Vector2(2, -1)    # upper grip
+	if rarm:
+		rarm.position = Vector2(0, 2)     # lower grip
+
+func unequip_weapon_visual() -> void:
+	has_weapon_equipped = false
+	if weapon_sprite:
+		weapon_sprite.visible = false
+		weapon_sprite.texture = null
+	# Reset hands to default
+	var larm = get_node_or_null("LeftArmPivot")
+	var rarm = get_node_or_null("RightArmPivot")
+	if larm:
+		larm.position = base_larm
+	if rarm:
+		rarm.position = base_rarm
 
 
 func play_state(new_state: String) -> void:

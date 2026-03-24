@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://starter_sword_icon" path="res://sprites/weapons/starter/starter-sword.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+weapon_name = "Starter Sword"
+weapon_description = "A sturdy iron blade. Reliable and swift, perfect for warriors beginning their journey."
+weapon_icon = ExtResource("2_icon")
+atk_min = 4
+atk_max = 7
+attack_cooldown = 0.05
+stamina_cost = 2.0
+charged_damage = 16
+charged_knockback = 350.0
+charged_stamina_cost = 40.0
+charge_time = 0.8
+attack_right_anim = "sword_attack_right"
+attack_left_anim = "sword_attack_left"
+charged_anim = "sword_charged"

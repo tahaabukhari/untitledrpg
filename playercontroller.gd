@@ -121,6 +121,10 @@ func _ready():
 	inventory_ui = $HUDLayer/InventoryUI
 	if inventory_ui:
 		inventory_ui.inventory_closed.connect(_on_inventory_closed)
+		if inventory_ui.has_signal("weapon_equipped"):
+			inventory_ui.weapon_equipped.connect(_on_weapon_equipped)
+		if inventory_ui.has_signal("weapon_unequipped"):
+			inventory_ui.weapon_unequipped.connect(_on_weapon_unequipped)
 	
 	# Style the touch buttons with RPG theme
 	var pixel_font = load("res://fonts/PressStart2P.ttf")
@@ -148,6 +152,7 @@ func _on_inv_button_pressed():
 			inventory_ui.close_inventory()
 		else:
 			inventory_ui.open_inventory()
+			_disable_touch_controls()
 
 func open_inventory() -> void:
 	if profile_ui != null:
@@ -186,7 +191,25 @@ func close_profile() -> void:
 		profile_ui = null
 
 func _on_inventory_closed():
-	pass  # No pause needed — game continues running
+	_enable_touch_controls()
+
+
+func _disable_touch_controls() -> void:
+	var tc = $TouchControls
+	if tc:
+		tc.visible = false
+		tc.set_process_input(false)
+	if joystick:
+		joystick.set_process_input(false)
+		joystick._end_touch()
+
+func _enable_touch_controls() -> void:
+	var tc = $TouchControls
+	if tc:
+		tc.visible = true
+		tc.set_process_input(true)
+	if joystick:
+		joystick.set_process_input(true)
 
 func _on_joystick_moved(movement: Vector2):
 	joystick_vector = movement
@@ -456,11 +479,28 @@ func _on_attack_charged() -> void:
 	is_attacking = true
 	hit_enemies_this_swing.clear()
 	current_attack_knockback = equipped_weapon.charged_knockback
-	attack_label.text = "UPPERCUT!"
+	attack_label.text = equipped_weapon.charged_anim.to_upper().replace("_", " ")
 	attack_label.visible = true
 	attack_text_timer = ATTACK_TEXT_TIME * 2
 	if player_skin and player_skin.has_method("play_uppercut"):
 		player_skin.play_uppercut()
+
+
+# ─── Weapon Equipping ────────────────────────────────────────────────────────
+
+const DEFAULT_WEAPON: WeaponData = preload("res://weapons/weapon_fists.tres")
+
+func _on_weapon_equipped(weapon: WeaponData) -> void:
+	equipped_weapon = weapon
+	print("Equipped: ", weapon.weapon_name)
+	if player_skin and player_skin.has_method("equip_weapon_visual"):
+		player_skin.equip_weapon_visual(weapon)
+
+func _on_weapon_unequipped() -> void:
+	equipped_weapon = DEFAULT_WEAPON
+	print("Unequipped weapon, reverting to fists")
+	if player_skin and player_skin.has_method("unequip_weapon_visual"):
+		player_skin.unequip_weapon_visual()
 
 
 func _on_attack_finished() -> void:

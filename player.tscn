@@ -59,6 +59,10 @@ position = Vector2(0, -0.5)
 [node name="Sprite" type="Sprite2D" parent="PlayerSkin/TorsoPivot"]
 texture = ExtResource("6_torso")
 
+[node name="WeaponSprite" type="Sprite2D" parent="PlayerSkin"]
+visible = false
+z_index = 1
+
 [node name="RightArmPivot" type="Node2D" parent="PlayerSkin"]
 position = Vector2(-6, -4.5)
 
