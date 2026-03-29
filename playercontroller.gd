@@ -508,6 +508,11 @@ func _on_attack_finished() -> void:
 	attack_cooldown_timer = equipped_weapon.attack_cooldown
 
 
+func trigger_weapon_dash(strength: float) -> void:
+	## Called by weapon animations to apply a forward velocity boost (e.g. sword thrust).
+	velocity.x = facing * strength
+
+
 func _on_attack_hit(body: Node2D) -> void:
 	if body.is_in_group("enemy") and body not in hit_enemies_this_swing:
 		hit_enemies_this_swing.append(body)

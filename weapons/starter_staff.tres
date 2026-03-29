@@ -1,13 +1,16 @@
-[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="WeaponData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://starter_staff_icon" path="res://sprites/weapons/starter/starter-staff.png" id="2_icon"]
+[ext_resource type="Script" path="res://weapons/animators/staff_animator.gd" id="3_animator"]
 
 [resource]
 script = ExtResource("1_script")
 weapon_name = "Starter Staff"
+weapon_type = "Staff"
 weapon_description = "A simple wooden staff imbued with faint arcane energy. The go-to weapon for aspiring mages."
 weapon_icon = ExtResource("2_icon")
+animator_script = ExtResource("3_animator")
 atk_min = 3
 atk_max = 6
 attack_cooldown = 0.1

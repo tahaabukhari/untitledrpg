@@ -5,8 +5,10 @@ class_name WeaponData
 
 @export_group("Identity")
 @export var weapon_name: String = "Fists"
+@export var weapon_type: String = "Fists" # e.g. "Sword", "Staff", "Fists"
 @export var weapon_description: String = "Your bare fists."
 @export var weapon_icon: Texture2D  # optional icon for UI
+@export var animator_script: GDScript  # e.g. preload("res://weapons/animators/sword_animator.gd")
 
 @export_group("Normal Attack")
 @export var atk_min: int = 2
@@ -26,6 +28,8 @@ class_name WeaponData
 @export var attack_right_anim: String = "attack_right"
 @export var attack_left_anim: String = "attack_left"
 @export var charged_anim: String = "uppercut"
+## Combo sequence — if non-empty, overrides attack_right/left with an ordered combo chain.
+@export var combo_anims: Array[String] = []
 
 
 ## Calculate a random normal attack damage, factoring in the player's ATK stat bonus.
