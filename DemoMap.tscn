@@ -17,7 +17,7 @@ gradient = SubResource("Gradient_2ot71")
 width = 257
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_4jxmo"]
-size = Vector2(105, 91)
+size = Vector2(139.401, 91)
 
 [sub_resource type="Gradient" id="Gradient_aur40"]
 colors = PackedColorArray(0, 0, 0, 1, 0.176419, 0.176419, 0.176419, 1)
@@ -182,12 +182,12 @@ position = Vector2(209, 499)
 position = Vector2(4399, 1175)
 
 [node name="WallComponent" type="CollisionShape2D" parent="wall"]
-position = Vector2(979, 1028)
+position = Vector2(970.819, 1043.13)
 rotation = 2.06645
 shape = SubResource("RectangleShape2D_4jxmo")
 
 [node name="Sprite2D" type="Sprite2D" parent="wall/WallComponent"]
-position = Vector2(16.4998, 3.8147e-06)
+position = Vector2(0.67874, -0.572626)
 scale = Vector2(0.535156, 96)
 texture = SubResource("GradientTexture1D_byso2")
 
