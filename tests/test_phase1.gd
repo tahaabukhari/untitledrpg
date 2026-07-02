@@ -52,6 +52,11 @@ func _run() -> void:
 		quit(1)
 		return
 
+	# Isolate from enemy AI — this suite tests input, not combat
+	for e in get_nodes_in_group("enemy"):
+		e.queue_free()
+	await process_frame
+
 	var input_ctrl: Node = player.get_node("PlayerInput")
 	_check("PlayerInput node exists", input_ctrl != null)
 

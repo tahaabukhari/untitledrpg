@@ -42,6 +42,11 @@ func _run() -> void:
 		quit(1)
 		return
 
+	# Isolate from live enemy AI — parry hits are injected directly here
+	for e in get_nodes_in_group("enemy"):
+		e.queue_free()
+	await process_frame
+
 	# ── Dodge roll basics ─────────────────────────────────────────────────
 	var x0: float = player.global_position.x
 	var sta0: float = player.stamina

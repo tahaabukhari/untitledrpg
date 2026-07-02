@@ -34,6 +34,11 @@ func _run() -> void:
 		quit(1)
 		return
 
+	# Isolate from live enemy AI — damage is injected directly here
+	for e in get_nodes_in_group("enemy"):
+		e.queue_free()
+	await process_frame
+
 	# ── Hurtbox present with correct layer ────────────────────────────────
 	var hurtbox: Area2D = player.get_node_or_null("Hurtbox")
 	_check("player Hurtbox exists", hurtbox != null)

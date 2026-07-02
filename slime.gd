@@ -1,8 +1,9 @@
-extends CharacterBody2D
-## Slime Monster — hops around with animated sprite, random scale, and aggro behavior.
+extends EnemyBase
+## Slime Monster — hops around with animated sprite, random scale, and aggro
+## behavior. Attacks with a telegraphed lunge that damages the player.
 
 # ─── State Machine ───────────────────────────────────────────────────────────
-enum State { PATROL, AGGRO, ATTACK }
+enum State { PATROL, AGGRO, WINDUP, LUNGE, RECOVER }
 
 # ─── Exported Tuning Parameters ──────────────────────────────────────────────
 @export_group("Movement")
@@ -15,9 +16,14 @@ enum State { PATROL, AGGRO, ATTACK }
 @export var aggro_speed: float = 160.0        ## Horizontal speed when chasing player
 @export var aggro_jump_force: float = 340.0   ## Upward impulse when chasing player
 @export var aggro_hop_cooldown: float = 0.4   ## Wait between hops while aggro'd
-@export var aggro_range: float = 1920.0       ## Detection radius (pixels)
 @export var aggro_time: float = 10.0          ## How long aggro lasts after losing sight
-@export var attack_distance: float = 40.0     ## Melee range
+@export var attack_distance: float = 60.0     ## Melee range
+
+@export_group("Attack")
+@export var windup_time: float = 0.45         ## Telegraph before the lunge
+@export var lunge_speed: float = 320.0        ## Horizontal lunge velocity
+@export var lunge_jump: float = 220.0         ## Upward lunge impulse
+@export var recover_time: float = 0.8         ## Vulnerable pause after a lunge
 
 @export_group("Patrol")
 @export var patrol_distance: float = 400.0    ## Max distance from spawn before turning
@@ -31,42 +37,34 @@ enum State { PATROL, AGGRO, ATTACK }
 @onready var anim_player: AnimationPlayer = $AnimationPlayer
 
 # ─── Internal State ──────────────────────────────────────────────────────────
-var player: Node2D = null
 var home_position: Vector2 = Vector2.ZERO
 var direction: int = 1                        # 1 = right, -1 = left
 var state: State = State.PATROL
 var aggro_timer: float = 0.0
 var hop_timer: float = 0.0
-var gravity: float = 0.0
 var is_hopping: bool = false
-var hp: int = 50
-var is_dead: bool = false
+var attack_timer: float = 0.0
+var _lunge_airborne: bool = false
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
-func _ready() -> void:
-	# Cache gravity from project settings
-	gravity = ProjectSettings.get_setting("physics/2d/default_gravity", 980.0)
-
+func _enemy_ready() -> void:
 	# Record spawn position for patrol bounds
 	home_position = global_position
-
-	# Find the player (make sure the player node is in the "player" group)
-	player = get_tree().get_first_node_in_group("player")
-
-	# Add to enemy group for combat detection
-	add_to_group("enemy")
 
 	# Apply random scale between min_scale and max_scale
 	var random_scale: float = randf_range(min_scale, max_scale)
 	scale = Vector2(random_scale, random_scale)
 
-	# HP scales with size: small=20, big=100
+	# HP + EXP scale with size: small=20hp/6xp, big=100hp/30xp
 	var size_ratio: float = (random_scale - min_scale) / maxf(max_scale - min_scale, 0.01)
-	hp = int(lerpf(20.0, 100.0, size_ratio))
+	max_hp = int(lerpf(20.0, 100.0, size_ratio))
+	hp = max_hp
+	exp_value = lerpf(6.0, 30.0, size_ratio)
+	attack_damage = int(lerpf(6.0, 14.0, size_ratio))
 
-	# Set collision layer to 4 so player hitbox (mask 4) can detect us
-	collision_layer = 4
+	# Lunge bite hitbox in front of the body
+	setup_attack_hitbox(Vector2(26, 18), Vector2(10, 0))
 
 	# Set initial hop cooldown
 	hop_timer = randf_range(hop_cooldown_min, hop_cooldown_max)
@@ -76,7 +74,7 @@ func _ready() -> void:
 		anim_player.play("idle")
 
 
-func _physics_process(delta: float) -> void:
+func _enemy_physics(delta: float) -> void:
 	# ── Apply gravity ────────────────────────────────────────────────────
 	velocity.y += gravity * delta
 
@@ -86,8 +84,12 @@ func _physics_process(delta: float) -> void:
 			_process_patrol(delta)
 		State.AGGRO:
 			_process_aggro(delta)
-		State.ATTACK:
-			_process_attack(delta)
+		State.WINDUP:
+			_process_windup(delta)
+		State.LUNGE:
+			_process_lunge(delta)
+		State.RECOVER:
+			_process_recover(delta)
 
 	move_and_slide()
 
@@ -96,10 +98,19 @@ func _physics_process(delta: float) -> void:
 		is_hopping = false
 		velocity.x = 0.0  # Stop sliding after landing
 
+
+func _on_staggered() -> void:
+	# A parried lunge is fully interrupted
+	if state == State.WINDUP or state == State.LUNGE:
+		state = State.RECOVER
+		attack_timer = recover_time * 1.5
+		if sprite:
+			sprite.modulate = Color(1, 1, 1, 1)
+
 # ─── State: PATROL ───────────────────────────────────────────────────────────
 
 func _process_patrol(delta: float) -> void:
-	# Check for player detection → switch to AGGRO
+	# Player detection now requires line of sight, not just distance
 	if _can_see_player():
 		state = State.AGGRO
 		aggro_timer = aggro_time
@@ -124,6 +135,8 @@ func _process_patrol(delta: float) -> void:
 
 func _process_aggro(delta: float) -> void:
 	aggro_timer -= delta
+	if _can_see_player():
+		aggro_timer = aggro_time
 
 	# Lost interest → return to patrol
 	if aggro_timer <= 0.0:
@@ -131,9 +144,14 @@ func _process_aggro(delta: float) -> void:
 		hop_timer = randf_range(hop_cooldown_min, hop_cooldown_max)
 		return
 
-	# Close enough to attack
-	if _distance_to_player() < attack_distance:
-		state = State.ATTACK
+	# Close enough to attack → telegraphed windup
+	if _distance_to_player() < attack_distance * scale.x and is_on_floor():
+		state = State.WINDUP
+		attack_timer = windup_time
+		velocity.x = 0.0
+		# Telegraph: yellow flash pulse
+		if sprite:
+			sprite.modulate = Color(1.4, 1.2, 0.5)
 		return
 
 	# Face the player
@@ -148,21 +166,51 @@ func _process_aggro(delta: float) -> void:
 			_perform_hop(aggro_speed, aggro_jump_force)
 			hop_timer = aggro_hop_cooldown
 
-# ─── State: ATTACK ───────────────────────────────────────────────────────────
+# ─── State: WINDUP → LUNGE → RECOVER ────────────────────────────────────────
 
-func _process_attack(_delta: float) -> void:
+func _process_windup(delta: float) -> void:
 	velocity.x = 0.0
+	attack_timer -= delta
 
-	# Play attacked animation once
-	if anim_player and anim_player.current_animation != "attacked":
-		anim_player.play("attacked")
+	# Track the player during the telegraph so the lunge is honest but dodgeable
+	if player:
+		direction = 1 if player.global_position.x > global_position.x else -1
+		_flip_sprite()
 
-	# If player moved out of range, re-enter aggro
-	if _distance_to_player() > attack_distance * 1.5:
-		state = State.AGGRO
-		aggro_timer = aggro_time
+	if attack_timer <= 0.0:
+		# Lunge!
+		state = State.LUNGE
+		_lunge_airborne = false
+		if sprite:
+			sprite.modulate = Color(1, 1, 1, 1)
+		if anim_player:
+			anim_player.play("attacked")
+		velocity.x = direction * lunge_speed
+		velocity.y = -lunge_jump
+		enable_attack_hitbox(direction)
+
+
+func _process_lunge(delta: float) -> void:
+	attack_timer += delta  # safety clock
+	if not is_on_floor():
+		_lunge_airborne = true
+	# Lunge ends on landing (or after 1s as a fallback)
+	if (_lunge_airborne and is_on_floor()) or attack_timer > 1.0:
+		disable_attack_hitbox()
+		velocity.x = 0.0
+		state = State.RECOVER
+		attack_timer = recover_time
 		if anim_player:
 			anim_player.play("idle")
+
+
+func _process_recover(delta: float) -> void:
+	velocity.x = 0.0
+	attack_timer -= delta
+	if attack_timer <= 0.0:
+		state = State.AGGRO
+		aggro_timer = aggro_time
+		hop_timer = aggro_hop_cooldown
 
 # ─── Movement Helpers ────────────────────────────────────────────────────────
 
@@ -175,21 +223,11 @@ func _perform_hop(h_speed: float, jump_force: float) -> void:
 	if anim_player and anim_player.current_animation != "idle":
 		anim_player.play("idle")
 
+
 func _flip_sprite() -> void:
 	if sprite:
 		sprite.flip_h = (direction > 0)
 
-# ─── Detection Helpers ──────────────────────────────────────────────────────
-
-func _can_see_player() -> bool:
-	if not player:
-		return false
-	return _distance_to_player() < aggro_range
-
-func _distance_to_player() -> float:
-	if not player:
-		return 99999.0
-	return global_position.distance_to(player.global_position)
 
 func _hit_wall() -> bool:
 	for i in get_slide_collision_count():
@@ -197,37 +235,3 @@ func _hit_wall() -> bool:
 		if abs(col.get_normal().x) > 0.7:
 			return true
 	return false
-
-
-# ─── Combat ──────────────────────────────────────────────────────────────────
-
-func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
-	if is_dead:
-		return
-	hp -= amount
-	_flash_red()
-	Fx.damage_number(global_position, amount)
-	# Apply knockback impulse
-	if knockback.length() > 0:
-		velocity = knockback
-	if hp <= 0:
-		hp = 0
-		_die()
-
-
-func _flash_red() -> void:
-	if sprite:
-		sprite.modulate = Color(1, 0.2, 0.2, 1)
-		var tw = create_tween()
-		tw.tween_property(sprite, "modulate", Color(1, 1, 1, 1), 0.15)
-
-
-func _die() -> void:
-	is_dead = true
-	# Give EXP to player
-	if player and player.has_method("add_exp"):
-		player.add_exp(10.0)
-	# Fade out and remove
-	var tw = create_tween()
-	tw.tween_property(self, "modulate:a", 0.0, 0.3)
-	tw.tween_callback(queue_free)
