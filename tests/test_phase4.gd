@@ -30,13 +30,19 @@ func _run() -> void:
 
 	var player: CharacterBody2D = get_first_node_in_group("player")
 	var slime: Node = current_scene.get_node_or_null("slime")
-	var whisperer: Node = current_scene.get_node_or_null("Whisperer")
 	_check("player exists", player != null)
 	_check("slime exists", slime != null)
-	_check("whisperer exists in DemoMap", whisperer != null)
-	if player == null or slime == null or whisperer == null:
+	if player == null or slime == null:
 		quit(1)
 		return
+
+	# Whisperer is spawned at runtime (not kept in DemoMap)
+	var whisp_scene: PackedScene = load("res://whisperer.tscn")
+	var whisperer: Node = whisp_scene.instantiate()
+	current_scene.add_child(whisperer)
+	whisperer.global_position = player.global_position + Vector2(1300, 20)
+	await _wait_frames(5)
+	_check("whisperer spawns", whisperer != null and whisperer.is_inside_tree())
 
 	# ── EnemyBase integration (duck-typed to avoid -s load-order artifacts) ──
 	_check("slime is EnemyBase", slime.has_method("apply_stagger") and slime.has_method("_has_line_of_sight"))

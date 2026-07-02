@@ -45,6 +45,11 @@ func get_current_class_stats() -> Dictionary:
 func set_class(cls_name: String) -> void:
 	if class_data.has(cls_name):
 		current_class = cls_name
-		print("Global: Assigned class ", cls_name)
 	else:
 		push_warning("Global: Attempted to set unknown class '%s'" % cls_name)
+
+
+## Single respawn path — used by both the pause menu RETRY and the death screen.
+func respawn() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
