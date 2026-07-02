@@ -60,6 +60,14 @@ var attack_cooldown_timer := 0.0
 var hit_enemies_this_swing: Array = []
 var current_attack_knockback := 0.0
 
+# Hurt / death state
+var invuln_timer := 0.0        # i-frames (hurt recovery, dodge roll, etc.)
+var is_hurt := false           # brief hitstun — movement input suppressed
+var hurt_timer := 0.0
+var is_dead := false
+const HURT_TIME := 0.25
+const HURT_IFRAMES := 0.8
+
 # Level, EXP, and Identity system
 var player_name := "Player"
 var player_title := "Novice"
@@ -254,7 +262,9 @@ func _on_attack_released(charge_level: float) -> void:
 
 
 func _gameplay_blocked() -> bool:
-	## Combat/movement input is ignored while menus are open.
+	## Combat/movement input is ignored while menus are open, dead, or in hitstun.
+	if is_dead or is_hurt:
+		return true
 	if inventory_ui != null and inventory_ui.is_open:
 		return true
 	if profile_ui != null:
@@ -289,7 +299,23 @@ func _perform_jump() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Dead: gravity only, no input
+	if is_dead:
+		if not is_on_floor():
+			velocity.y += ProjectSettings.get_setting("physics/2d/default_gravity") * delta
+		velocity.x = move_toward(velocity.x, 0, SPEED * delta * 4.0)
+		move_and_slide()
+		return
+
 	stamina_regen_paused = false
+
+	# Timers: i-frames + hitstun
+	if invuln_timer > 0.0:
+		invuln_timer -= delta
+	if is_hurt:
+		hurt_timer -= delta
+		if hurt_timer <= 0.0:
+			is_hurt = false
 
 	# Dash logic
 	if is_dashing:
@@ -328,8 +354,11 @@ func _physics_process(delta: float) -> void:
 
 	# (Jump input arrives via the PlayerInput layer → _on_jump_input)
 
-	# Left/right movement via joystick
-	if abs(joystick_vector.x) > 0.1:
+	# Left/right movement via joystick (suppressed during hitstun so
+	# knockback impulses aren't immediately overwritten)
+	if is_hurt:
+		velocity.x = move_toward(velocity.x, 0, SPEED * delta * 6.0)
+	elif abs(joystick_vector.x) > 0.1:
 		velocity.x = joystick_vector.x * SPEED
 	else:
 		velocity.x = move_toward(velocity.x, 0, SPEED)
@@ -380,7 +409,7 @@ func _physics_process(delta: float) -> void:
 	# ── Animation state ──────────────────────────────────────────────────
 	if attack_cooldown_timer > 0.0:
 		attack_cooldown_timer -= delta
-	if player_skin and player_skin.has_method("play_state") and not is_attacking:
+	if player_skin and player_skin.has_method("play_state") and not is_attacking and not is_hurt:
 		if not is_on_floor() and velocity.y < 0:
 			fall_timer = 0.0
 			player_skin.play_state("jump")
@@ -487,15 +516,22 @@ func _on_attack_button_pressed() -> void:
 	is_attacking = true
 	hit_enemies_this_swing.clear()
 	current_attack_knockback = 0.0
-	var dir = joystick_vector.normalized()
-	if dir.length() < 0.3:
-		dir = Vector2(facing, 0)
-	var text = get_direction_name(dir)
-	attack_label.text = text
+
+	# 8-directional aim: mouse in KBM mode, joystick direction on touch
+	var aim: Vector2 = input_ctrl.get_aim_vector() if input_ctrl else Vector2.ZERO
+	if aim == Vector2.ZERO:
+		aim = Vector2(facing, 0)
+	# Attacks face their aim
+	if absf(aim.x) > 0.15 and signf(aim.x) != facing:
+		facing = int(signf(aim.x))
+		if player_skin:
+			player_skin.scale.x = abs(player_skin.scale.x) * facing
+
+	attack_label.text = get_direction_name(aim)
 	attack_label.visible = true
 	attack_text_timer = ATTACK_TEXT_TIME
 	if player_skin and player_skin.has_method("play_attack"):
-		player_skin.play_attack()
+		player_skin.play_attack(aim)
 
 
 func _on_attack_charged() -> void:
@@ -543,6 +579,91 @@ func _on_attack_finished() -> void:
 func trigger_weapon_dash(strength: float) -> void:
 	## Called by weapon animations to apply a forward velocity boost (e.g. sword thrust).
 	velocity.x = facing * strength
+
+
+# ─── Taking Damage / Death ───────────────────────────────────────────────────
+
+func take_damage(amount: int, source_pos: Vector2, knockback: Vector2 = Vector2.ZERO, attacker: Node = null) -> bool:
+	## Called by enemy hitboxes. Returns true if damage was actually applied.
+	## Respects i-frames (hurt recovery / dodge roll); parry is checked first
+	## and, on success, negates the hit and staggers the attacker.
+	if is_dead:
+		return false
+	if _try_parry(source_pos, attacker):
+		return false
+	if invuln_timer > 0.0:
+		return false
+
+	var mitigated: int = maxi(amount - (defense + stat_def), 1)
+	health -= mitigated
+	Fx.damage_number(global_position, mitigated, Fx.PLAYER_DAMAGE_COLOR)
+
+	# Hitstun + knockback + i-frames
+	is_hurt = true
+	hurt_timer = HURT_TIME
+	invuln_timer = HURT_IFRAMES
+	is_attacking = false
+	if player_skin:
+		if player_skin.has_method("_disable_hitbox"):
+			player_skin._disable_hitbox()  # never leave a hitbox stuck on
+		if player_skin.has_method("play_hurt"):
+			player_skin.play_hurt()
+	if knockback.length() > 0:
+		velocity = knockback
+	else:
+		var away: float = signf(global_position.x - source_pos.x)
+		velocity = Vector2((away if away != 0.0 else -facing) * 220.0, -160.0)
+	_flash_skin(Color(1, 0.25, 0.25))
+	update_bars()
+
+	if health <= 0:
+		die()
+	return true
+
+
+func _try_parry(_source_pos: Vector2, _attacker: Node) -> bool:
+	# Implemented in Phase 3 (parry window + facing check + stagger).
+	return false
+
+
+func _flash_skin(color: Color) -> void:
+	if not player_skin:
+		return
+	player_skin.modulate = color
+	var tw := create_tween()
+	tw.tween_property(player_skin, "modulate", Color.WHITE, 0.2)
+
+
+func die() -> void:
+	if is_dead:
+		return
+	is_dead = true
+	is_attacking = false
+	is_dashing = false
+	health = 0
+	update_bars()
+	if player_skin:
+		if player_skin.has_method("_disable_hitbox"):
+			player_skin._disable_hitbox()
+		if player_skin.has_method("play_death"):
+			player_skin.play_death()
+	_disable_touch_controls()
+	# Let the collapse play out, then show the death screen
+	var timer := get_tree().create_timer(1.1)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			_show_death_screen())
+
+
+func _show_death_screen() -> void:
+	var screen := get_tree().get_first_node_in_group("death_screen")
+	if screen == null:
+		var scene := load("res://dieo.tscn")
+		if scene:
+			screen = scene.instantiate()
+			get_tree().current_scene.add_child(screen)
+	if screen and screen.has_method("show_death_screen"):
+		screen.show_death_screen()
 
 
 func _on_attack_hit(body: Node2D) -> void:

@@ -32,6 +32,14 @@ script = ExtResource("1_input")
 position = Vector2(2, 3)
 shape = SubResource("RectangleShape2D_f41kl")
 
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 8
+collision_mask = 0
+
+[node name="HurtShape" type="CollisionShape2D" parent="Hurtbox"]
+position = Vector2(2, 3)
+shape = SubResource("RectangleShape2D_f41kl")
+
 [node name="GroundRay" type="RayCast2D" parent="."]
 target_position = Vector2(0, 2000)
 

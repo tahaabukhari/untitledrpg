@@ -43,6 +43,134 @@ func teardown_visual(_weapon_sprite: Sprite2D, _pivots: Dictionary) -> void:
 		_weapon_sprite.z_index = 1
 
 
+# ─── Directional Swing Builder ───────────────────────────────────────────────
+## ONE angle-parameterized builder → all 8 attack directions, reused by both
+## the player puppet and monsters (pass rig node names via `opts`).
+##
+## `angle` is the swing plane's aim angle in the RIG's local space (radians,
+## 0 = forward along +x, negative = up). The caller is responsible for
+## converting world aim into local space (mirror rigs flip x).
+##
+## opts (all optional):
+##   length: float            — animation length (default 0.35)
+##   arm_nodes: Array         — pivot node names to swing (default player arms)
+##   arm_bases: Array         — matching rest positions (default from pivots)
+##   arm_base_rots: Array     — matching rest rotations (default from pivots)
+##   weapon_node: String      — weapon sprite node path ("" to skip)
+##   body_nodes: Dictionary   — {node_name: rest_pos} kept keyed at rest
+##   reach: float             — how far arms push along the aim (default 7.0)
+##   windup: float            — wind-up rotation before the sweep (default 0.7)
+##   follow: float            — follow-through rotation (default 1.1)
+##   hit_start/hit_end: float — hitbox enable window (defaults 0.22/0.62 × length)
+##   slash_time: float        — when the slash VFX fires (default 0.3 × length)
+##   enable_method/disable_method/slash_method: String — method-track callbacks
+##   method_target: String    — node path for method tracks (default ".")
+##   with_slash: bool         — fire the slash VFX callback (default true)
+
+static func make_directional_swing(pivots: Dictionary, angle: float, opts: Dictionary = {}) -> Animation:
+	var length: float = opts.get("length", 0.35)
+	var a := Animation.new()
+	a.length = length
+	a.step = 0.05
+
+	var dirv := Vector2(cos(angle), sin(angle))
+	var arm_nodes: Array = opts.get("arm_nodes", ["LeftArmPivot", "RightArmPivot"])
+	var arm_bases: Array = opts.get("arm_bases", [
+		pivots.get("base_larm", Vector2(6, -4.5)),
+		pivots.get("base_rarm", Vector2(-6, -4.5)),
+	])
+	var arm_base_rots: Array = opts.get("arm_base_rots", [
+		pivots.get("base_larm_rot", 0.0),
+		pivots.get("base_rarm_rot", 0.0),
+	])
+	var reach: float = opts.get("reach", 7.0)
+	var windup: float = opts.get("windup", 0.7)
+	var follow: float = opts.get("follow", 1.1)
+
+	# Timing landmarks
+	var t_wind: float = length * 0.22
+	var t_strike: float = length * 0.45
+	var t_recover: float = length * 0.75
+
+	# Arms: pull back opposite the aim, then sweep through it
+	for i in range(arm_nodes.size()):
+		var node_name: String = arm_nodes[i]
+		var base: Vector2 = arm_bases[i] if i < arm_bases.size() else Vector2.ZERO
+		var base_rot: float = arm_base_rots[i] if i < arm_base_rots.size() else 0.0
+		var stagger := 0.9 if i == 0 else 0.75  # rear arm trails slightly
+
+		anim_pos(a, node_name, [
+			[0.0, base],
+			[t_wind, base - dirv * reach * 0.5],
+			[t_strike, base + dirv * reach * stagger],
+			[t_recover, base + dirv * reach * 0.4],
+			[length, base],
+		])
+		anim_rot(a, node_name, [
+			[0.0, base_rot],
+			[t_wind, base_rot + angle - windup],
+			[t_strike, base_rot + angle + follow * stagger],
+			[t_recover, base_rot + angle + follow * 0.5],
+			[length, base_rot],
+		])
+
+	# Weapon sprite: sweep an arc through the aim direction
+	var weapon_node: String = opts.get("weapon_node", "LeftArmPivot/WeaponSprite")
+	if weapon_node != "":
+		anim_rot(a, weapon_node, [
+			[0.0, 0.0],
+			[t_wind, angle - windup - 0.4],
+			[t_strike, angle + follow + 0.6],
+			[t_recover, angle + follow * 0.4],
+			[length, 0.0],
+		])
+
+	# Torso/head lean into the swing (only if the rig has them)
+	if pivots.has("base_torso"):
+		var bt: Vector2 = pivots["base_torso"]
+		anim_pos(a, "TorsoPivot", [
+			[0.0, bt],
+			[t_wind, bt - dirv * 1.5],
+			[t_strike, bt + dirv * 2.5],
+			[length, bt],
+		])
+		anim_rot(a, "TorsoPivot", [
+			[0.0, 0.0],
+			[t_wind, -0.08 * signf(dirv.x if absf(dirv.x) > 0.1 else 1.0)],
+			[t_strike, 0.14],
+			[length, 0.0],
+		])
+	if pivots.has("base_head"):
+		var bh: Vector2 = pivots["base_head"]
+		anim_pos(a, "HeadPivot", [
+			[0.0, bh],
+			[t_strike, bh + dirv * 1.5],
+			[length, bh],
+		])
+	if pivots.has("base_lleg"):
+		anim_pos(a, "LeftLegPivot", [[0.0, pivots["base_lleg"]], [length, pivots["base_lleg"]]])
+		anim_rot(a, "LeftLegPivot", [[0.0, 0.0], [length, 0.0]])
+	if pivots.has("base_rleg"):
+		anim_pos(a, "RightLegPivot", [[0.0, pivots["base_rleg"]], [length, pivots["base_rleg"]]])
+		anim_rot(a, "RightLegPivot", [[0.0, 0.0], [length, 0.0]])
+
+	# Extra rig-specific rest holds (enemies with custom bodies)
+	var body_nodes: Dictionary = opts.get("body_nodes", {})
+	for node_name in body_nodes:
+		anim_pos(a, node_name, [[0.0, body_nodes[node_name]], [length, body_nodes[node_name]]])
+
+	# Hitbox window + slash VFX method tracks
+	var target: String = opts.get("method_target", ".")
+	var hit_start: float = opts.get("hit_start", length * 0.22)
+	var hit_end: float = opts.get("hit_end", length * 0.62)
+	anim_method(a, target, hit_start, opts.get("enable_method", "_enable_hitbox"))
+	if opts.get("with_slash", true):
+		anim_method(a, target, opts.get("slash_time", length * 0.3), opts.get("slash_method", "_spawn_directional_slash"))
+	anim_method(a, target, hit_end, opts.get("disable_method", "_disable_hitbox"))
+
+	return a
+
+
 # ─── Track Helpers ───────────────────────────────────────────────────────────
 # Shared by all weapon animators for creating smooth keyframed tracks.
 

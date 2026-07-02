@@ -145,8 +145,7 @@ func _on_resumebutton_pressed() -> void:
 
 func _on_retrybutton_pressed() -> void:
 	if is_transitioning: return
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+	Global.respawn()
 
 func _on_returnbutton_pressed() -> void:
 	if is_transitioning: return
