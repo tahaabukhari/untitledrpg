@@ -19,11 +19,6 @@ var combo_step: int = 0
 var combo_reset_timer: float = 0.0
 const COMBO_RESET_TIME: float = 0.8  # seconds before combo resets to step 0
 
-# Directional attack state (set by play_attack, read by VFX method tracks)
-var _aim_local_angle: float = 0.0
-var _aim_facing: float = 1.0
-var _slash_downward: bool = true
-
 signal attack_finished
 
 # ─── Adjustable Pivot Positions (tweak these in the Inspector) ───────────────
@@ -87,8 +82,6 @@ func _get_pivots() -> Dictionary:
 		"base_rarm": base_rarm,
 		"base_lleg": base_lleg,
 		"base_rleg": base_rleg,
-		"base_larm_rot": base_larm_rot,
-		"base_rarm_rot": base_rarm_rot,
 		"larm_node": get_node_or_null("LeftArmPivot"),
 		"rarm_node": get_node_or_null("RightArmPivot"),
 	}
@@ -209,68 +202,36 @@ func play_state(new_state: String) -> void:
 	anim_player.play(new_state)
 
 
-func play_attack(aim: Vector2 = Vector2.ZERO) -> void:
-	## Combo-aware attack, oriented by the world-space `aim` vector (8-way
-	## quantized). Horizontal aim keeps the weapon's hand-authored combos;
-	## the other directions use the shared angle-parameterized swing builder.
-	var facing_sign: float = sign(scale.x) if scale.x != 0 else 1.0
-	if aim == Vector2.ZERO:
-		aim = Vector2(facing_sign, 0)
-
-	# World aim → rig-local angle (the rig mirrors via scale.x)
-	var local_angle := atan2(aim.y, aim.x * facing_sign)
-	# Quantize to octants: 0 = forward, ±1 diagonals, ±2 straight up/down.
-	# Backward aims fold into forward (playercontroller flips facing first).
-	var oct := clampi(roundi(local_angle / (PI / 4.0)), -2, 2)
-	_aim_local_angle = oct * (PI / 4.0)
-	_aim_facing = facing_sign
-
-	# Point the hitbox along the aim
-	var hitbox := get_node_or_null("AttackHitbox")
-	if hitbox:
-		hitbox.rotation = _aim_local_angle
-
-	# Advance the combo counter
-	var combo_count := 2
-	if equipped_weapon and equipped_weapon.combo_anims.size() > 0:
-		combo_count = equipped_weapon.combo_anims.size()
-	if combo_step >= combo_count:
-		combo_step = 0
-	var step := combo_step
-	combo_step = (combo_step + 1) % combo_count
-	combo_reset_timer = COMBO_RESET_TIME
-	_slash_downward = step % 2 == 0
-
+func play_attack() -> void:
 	var anim_name: String
-	if oct == 0:
-		# Horizontal: use the weapon's authored animations
-		if equipped_weapon and equipped_weapon.combo_anims.size() > 0:
-			anim_name = equipped_weapon.combo_anims[step]
-		elif equipped_weapon:
-			anim_name = equipped_weapon.attack_right_anim if step % 2 == 0 else equipped_weapon.attack_left_anim
-		else:
-			anim_name = "attack_right" if step % 2 == 0 else "attack_left"
+	
+	# Use combo system if the weapon defines combo_anims
+	if equipped_weapon and equipped_weapon.combo_anims.size() > 0:
+		var combos = equipped_weapon.combo_anims
+		if combo_step >= combos.size():
+			combo_step = 0
+		anim_name = combos[combo_step]
+		combo_step += 1
+		if combo_step >= combos.size():
+			combo_step = 0  # wrap around
+		combo_reset_timer = COMBO_RESET_TIME
+	elif equipped_weapon:
+		# Legacy fallback: alternate right/left
+		var step = combo_step % 2
+		anim_name = equipped_weapon.attack_right_anim if step == 0 else equipped_weapon.attack_left_anim
+		combo_step += 1
+		combo_reset_timer = COMBO_RESET_TIME
 	else:
-		# Directional: build (and cache) an angle-parameterized swing
-		anim_name = "dirswing_%d_%d" % [oct, step % 2]
-		if not anim_player.has_animation(anim_name):
-			var opts := {
-				"length": 0.35,
-				"windup": 0.7 if step % 2 == 0 else 0.5,
-				"follow": 1.1 if step % 2 == 0 else 0.9,
-			}
-			var anim := WeaponAnimator.make_directional_swing(_get_pivots(), _aim_local_angle, opts)
-			var lib := anim_player.get_animation_library("")
-			if lib:
-				lib.add_animation(anim_name, anim)
-				_weapon_anim_names.append(anim_name)
-
+		anim_name = "attack_right" if combo_step % 2 == 0 else "attack_left"
+		combo_step += 1
+		combo_reset_timer = COMBO_RESET_TIME
+	
 	current_state = anim_name
 	if anim_player.has_animation(anim_name):
 		anim_player.play(anim_name)
 	else:
 		anim_player.play("attack_right") # ultimate fallback
-
+	
 	if not anim_player.animation_finished.is_connected(_on_attack_done):
 		anim_player.animation_finished.connect(_on_attack_done, CONNECT_ONE_SHOT)
 
@@ -292,41 +253,7 @@ func play_uppercut() -> void:
 
 func _on_attack_done(_anim_name: String) -> void:
 	current_state = ""
-	# Restore the hitbox to its forward orientation
-	var hitbox := get_node_or_null("AttackHitbox")
-	if hitbox:
-		hitbox.rotation = 0.0
 	attack_finished.emit()
-
-
-func play_hurt() -> void:
-	## One-shot hurt recoil; always restarts even if already playing.
-	current_state = "hurt"
-	if anim_player.has_animation("hurt"):
-		anim_player.play("hurt")
-		anim_player.seek(0.0, true)
-
-
-func play_roll() -> void:
-	## One-shot dodge roll tuck; always restarts.
-	current_state = "roll"
-	if anim_player.has_animation("roll"):
-		anim_player.play("roll")
-		anim_player.seek(0.0, true)
-
-
-func play_parry() -> void:
-	## One-shot guard pose (window + recovery); always restarts.
-	current_state = "parry"
-	if anim_player.has_animation("parry"):
-		anim_player.play("parry")
-		anim_player.seek(0.0, true)
-
-
-func play_death() -> void:
-	current_state = "death"
-	if anim_player.has_animation("death"):
-		anim_player.play("death")
 
 
 # ─── Animation Library Builder ──────────────────────────────────────────────
@@ -340,10 +267,6 @@ func _build_all_animations() -> void:
 	lib.add_animation("jump", _make_jump())
 	lib.add_animation("fall", _make_fall())
 	lib.add_animation("long_fall", _make_long_fall())
-	lib.add_animation("hurt", _make_hurt())
-	lib.add_animation("death", _make_death())
-	lib.add_animation("roll", _make_roll())
-	lib.add_animation("parry", _make_parry())
 	
 	# Register default fist animations
 	if _fists_animator:
@@ -362,7 +285,7 @@ func _rebuild_locomotion_animations() -> void:
 	if not lib:
 		return
 	
-	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall", "hurt", "death", "roll", "parry"]
+	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall"]
 	var locomotion_builders = {
 		"idle": _make_idle,
 		"walk": _make_walk,
@@ -370,10 +293,6 @@ func _rebuild_locomotion_animations() -> void:
 		"jump": _make_jump,
 		"fall": _make_fall,
 		"long_fall": _make_long_fall,
-		"hurt": _make_hurt,
-		"death": _make_death,
-		"roll": _make_roll,
-		"parry": _make_parry,
 	}
 	
 	for anim_name in locomotion_names:
@@ -739,211 +658,6 @@ func _make_long_fall() -> Animation:
 	return a
 
 
-# ─── HURT: Quick recoil flinch ───────────────────────────────────────────────
-
-func _make_hurt() -> Animation:
-	var a = Animation.new()
-	a.length = 0.25
-	a.loop_mode = Animation.LOOP_NONE
-
-	# Whole upper body snaps back, then settles
-	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso + Vector2(-3, 1)],
-		[0.1,  base_torso + Vector2(-2, 0.5)],
-		[0.25, base_torso],
-	])
-	_rot(a, "TorsoPivot", [[0.0, -0.18], [0.12, -0.1], [0.25, 0.0]])
-
-	_pos(a, "HeadPivot", [
-		[0.0,  base_head + Vector2(-4, 1)],
-		[0.1,  base_head + Vector2(-2, 0.5)],
-		[0.25, base_head],
-	])
-
-	_pos(a, "LeftArmPivot", [
-		[0.0,  base_larm + Vector2(-2, -2)],
-		[0.25, base_larm],
-	])
-	_rot(a, "LeftArmPivot", [[0.0, -0.5 + base_larm_rot], [0.25, base_larm_rot]])
-	_pos(a, "RightArmPivot", [
-		[0.0,  base_rarm + Vector2(-2, -2)],
-		[0.25, base_rarm],
-	])
-	_rot(a, "RightArmPivot", [[0.0, 0.5 + base_rarm_rot], [0.25, base_rarm_rot]])
-
-	_rot(a, "LeftLegPivot",  [[0.0, 0.1], [0.25, 0.0]])
-	_rot(a, "RightLegPivot", [[0.0, -0.1], [0.25, 0.0]])
-	_pos(a, "LeftLegPivot",  [[0.0, base_lleg], [0.25, base_lleg]])
-	_pos(a, "RightLegPivot", [[0.0, base_rleg], [0.25, base_rleg]])
-
-	return a
-
-
-# ─── DEATH: Collapse backward ────────────────────────────────────────────────
-
-func _make_death() -> Animation:
-	var a = Animation.new()
-	a.length = 0.8
-	a.loop_mode = Animation.LOOP_NONE
-
-	# Body crumples: torso and head sink, limbs go limp
-	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso],
-		[0.3,  base_torso + Vector2(-2, 2)],
-		[0.8,  base_torso + Vector2(-4, 6)],
-	])
-	_rot(a, "TorsoPivot", [[0.0, 0.0], [0.4, -0.4], [0.8, -0.9]])
-
-	_pos(a, "HeadPivot", [
-		[0.0,  base_head],
-		[0.3,  base_head + Vector2(-3, 3)],
-		[0.8,  base_head + Vector2(-6, 9)],
-	])
-
-	_pos(a, "LeftArmPivot", [
-		[0.0,  base_larm],
-		[0.8,  base_larm + Vector2(-3, 5)],
-	])
-	_rot(a, "LeftArmPivot", [[0.0, base_larm_rot], [0.8, base_larm_rot - 1.2]])
-	_pos(a, "RightArmPivot", [
-		[0.0,  base_rarm],
-		[0.8,  base_rarm + Vector2(-3, 5)],
-	])
-	_rot(a, "RightArmPivot", [[0.0, base_rarm_rot], [0.8, base_rarm_rot + 1.2]])
-
-	_rot(a, "LeftLegPivot",  [[0.0, 0.0], [0.8, 0.5]])
-	_rot(a, "RightLegPivot", [[0.0, 0.0], [0.8, -0.5]])
-	_pos(a, "LeftLegPivot",  [[0.0, base_lleg], [0.8, base_lleg + Vector2(1, 2)]])
-	_pos(a, "RightLegPivot", [[0.0, base_rleg], [0.8, base_rleg + Vector2(-1, 2)]])
-
-	# Whole-skin tilt (reset externally on respawn, like long_fall)
-	var rt := a.add_track(Animation.TYPE_VALUE)
-	a.track_set_path(rt, ".:rotation")
-	a.track_set_interpolation_type(rt, Animation.INTERPOLATION_LINEAR)
-	a.track_insert_key(rt, 0.0, 0.0)
-	a.track_insert_key(rt, 0.8, -PI / 2.2)
-
-	return a
-
-
-# ─── ROLL: Grounded forward tuck (dodge) ─────────────────────────────────────
-
-func _make_roll() -> Animation:
-	## Full-body forward rotation with limbs tucked in — reuses the long_fall
-	## whole-skin rotation technique but grounded and one-shot. The controller
-	## resets PlayerSkin.rotation when the roll ends.
-	var a = Animation.new()
-	a.length = 0.35
-	a.loop_mode = Animation.LOOP_NONE
-
-	# Tuck: everything pulls toward the center
-	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso],
-		[0.08, base_torso + Vector2(0, 2)],
-		[0.3,  base_torso + Vector2(0, 2)],
-		[0.35, base_torso],
-	])
-	_rot(a, "TorsoPivot", [[0.0, 0.0], [0.35, 0.0]])
-	_pos(a, "HeadPivot", [
-		[0.0,  base_head],
-		[0.08, base_head + Vector2(2, 4)],
-		[0.3,  base_head + Vector2(2, 4)],
-		[0.35, base_head],
-	])
-	_pos(a, "LeftArmPivot", [
-		[0.0,  base_larm],
-		[0.08, base_larm + Vector2(-2, 2)],
-		[0.3,  base_larm + Vector2(-2, 2)],
-		[0.35, base_larm],
-	])
-	_rot(a, "LeftArmPivot", [[0.0, base_larm_rot], [0.1, base_larm_rot + 1.2], [0.35, base_larm_rot]])
-	_pos(a, "RightArmPivot", [
-		[0.0,  base_rarm],
-		[0.08, base_rarm + Vector2(2, 2)],
-		[0.3,  base_rarm + Vector2(2, 2)],
-		[0.35, base_rarm],
-	])
-	_rot(a, "RightArmPivot", [[0.0, base_rarm_rot], [0.1, base_rarm_rot - 1.2], [0.35, base_rarm_rot]])
-	_pos(a, "LeftLegPivot", [
-		[0.0,  base_lleg],
-		[0.08, base_lleg + Vector2(1, -2)],
-		[0.3,  base_lleg + Vector2(1, -2)],
-		[0.35, base_lleg],
-	])
-	_rot(a, "LeftLegPivot", [[0.0, 0.0], [0.1, 0.9], [0.35, 0.0]])
-	_pos(a, "RightLegPivot", [
-		[0.0,  base_rleg],
-		[0.08, base_rleg + Vector2(-1, -2)],
-		[0.3,  base_rleg + Vector2(-1, -2)],
-		[0.35, base_rleg],
-	])
-	_rot(a, "RightLegPivot", [[0.0, 0.0], [0.1, -0.9], [0.35, 0.0]])
-
-	# FULL BODY forward rotation (mirrors automatically with scale.x flip)
-	var rt := a.add_track(Animation.TYPE_VALUE)
-	a.track_set_path(rt, ".:rotation")
-	a.track_set_interpolation_type(rt, Animation.INTERPOLATION_LINEAR)
-	a.track_insert_key(rt, 0.0, 0.0)
-	a.track_insert_key(rt, 0.35, TAU)
-
-	return a
-
-
-# ─── PARRY: Guard pose (window + recovery) ───────────────────────────────────
-
-func _make_parry() -> Animation:
-	var a = Animation.new()
-	a.length = 0.45
-	a.loop_mode = Animation.LOOP_NONE
-
-	# Both arms snap up into a cross-guard in front of the chest, then relax
-	_pos(a, "LeftArmPivot", [
-		[0.0,  base_larm],
-		[0.05, base_larm + Vector2(6, -3)],
-		[0.28, base_larm + Vector2(6, -3)],
-		[0.45, base_larm],
-	])
-	_rot(a, "LeftArmPivot", [
-		[0.0,  base_larm_rot],
-		[0.05, base_larm_rot - 0.9],
-		[0.28, base_larm_rot - 0.9],
-		[0.45, base_larm_rot],
-	])
-	_pos(a, "RightArmPivot", [
-		[0.0,  base_rarm],
-		[0.05, base_rarm + Vector2(7, -2)],
-		[0.28, base_rarm + Vector2(7, -2)],
-		[0.45, base_rarm],
-	])
-	_rot(a, "RightArmPivot", [
-		[0.0,  base_rarm_rot],
-		[0.05, base_rarm_rot - 0.7],
-		[0.28, base_rarm_rot - 0.7],
-		[0.45, base_rarm_rot],
-	])
-
-	# Slight brace: torso leans back, legs plant wide
-	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso],
-		[0.05, base_torso + Vector2(-1.5, 0.5)],
-		[0.28, base_torso + Vector2(-1.5, 0.5)],
-		[0.45, base_torso],
-	])
-	_rot(a, "TorsoPivot", [[0.0, 0.0], [0.05, -0.08], [0.28, -0.08], [0.45, 0.0]])
-	_pos(a, "HeadPivot", [
-		[0.0,  base_head],
-		[0.05, base_head + Vector2(-1, 0.5)],
-		[0.28, base_head + Vector2(-1, 0.5)],
-		[0.45, base_head],
-	])
-	_rot(a, "LeftLegPivot",  [[0.0, 0.0], [0.05, -0.12], [0.28, -0.12], [0.45, 0.0]])
-	_rot(a, "RightLegPivot", [[0.0, 0.0], [0.05, 0.12], [0.28, 0.12], [0.45, 0.0]])
-	_pos(a, "LeftLegPivot",  [[0.0, base_lleg], [0.45, base_lleg]])
-	_pos(a, "RightLegPivot", [[0.0, base_rleg], [0.45, base_rleg]])
-
-	return a
-
-
 # ─── Combat Utilities ────────────────────────────────────────────────────────
 
 func _enable_hitbox() -> void:
@@ -959,30 +673,111 @@ func _disable_hitbox() -> void:
 
 
 func _spawn_swing_arc() -> void:
-	var player_node := get_parent()
+	var player_node = get_parent()
 	if not player_node:
 		return
 	var dir: float = sign(scale.x) if scale.x != 0 else 1.0
-	Fx.swing_arc(player_node.global_position, dir)
+	var origin: Vector2 = player_node.global_position
+
+	var arc = Line2D.new()
+	arc.width = 4.0
+	arc.default_color = Color(1.0, 1.0, 0.8, 0.95)
+	arc.z_index = 100
+	arc.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	arc.end_cap_mode = Line2D.LINE_CAP_ROUND
+
+	var arc_radius := 20.0
+	for i in range(9):
+		var t: float = float(i) / 8.0
+		var angle: float = lerpf(-PI * 0.4, PI * 0.4, t)
+		var pt := Vector2(cos(angle) * arc_radius * dir, sin(angle) * arc_radius)
+		pt += Vector2(dir * 14, 0)
+		arc.add_point(pt)
+
+	arc.global_position = origin
+	player_node.get_parent().add_child(arc)
+
+	var tw = arc.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(arc, "width", 0.0, 0.2).set_ease(Tween.EASE_IN)
+	tw.tween_property(arc, "modulate:a", 0.0, 0.22)
+	tw.chain().tween_callback(arc.queue_free)
+
+	for i in range(5):
+		var p = ColorRect.new()
+		p.size = Vector2(3, 3)
+		p.color = Color(1.0, 0.9, 0.5, 0.9)
+		p.global_position = origin + Vector2(dir * randf_range(10, 28), randf_range(-12, 12))
+		p.z_index = 100
+		player_node.get_parent().add_child(p)
+		var tw2 = p.create_tween()
+		tw2.set_parallel(true)
+		tw2.tween_property(p, "global_position", p.global_position + Vector2(dir * randf_range(6, 16), randf_range(-8, 8)), 0.22)
+		tw2.tween_property(p, "modulate:a", 0.0, 0.22)
+		tw2.chain().tween_callback(p.queue_free)
 
 
 func _spawn_sword_slash_effect(downward: bool) -> void:
-	var player_node := get_parent()
+	var player_node = get_parent()
 	if not player_node:
 		return
 	var dir: float = sign(scale.x) if scale.x != 0 else 1.0
-	Fx.slash_effect(player_node.global_position, dir, downward)
+	var origin: Vector2 = player_node.global_position
 
+	var arc = Line2D.new()
+	arc.width = 12.0
+	arc.default_color = Color(1.0, 1.0, 1.0, 0.9)  # Bright white for sword slash
+	arc.z_index = 105
+	arc.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	arc.end_cap_mode = Line2D.LINE_CAP_ROUND
+	
+	var arc_radius := 26.0
+	
+	# Angles depend on swing direction
+	var start_angle: float
+	var end_angle: float
+	if downward:
+		start_angle = -PI * 0.6
+		end_angle = PI * 0.4
+	else:
+		start_angle = PI * 0.6
+		end_angle = -PI * 0.4
+	
+	# More points for smoother sword arc
+	for i in range(12):
+		var t: float = float(i) / 11.0
+		var angle: float = lerpf(start_angle, end_angle, t)
+		var pt := Vector2(cos(angle) * arc_radius * dir, sin(angle) * arc_radius)
+		pt += Vector2(dir * 20, -5) # pushed out and up
+		arc.add_point(pt)
 
-func _spawn_directional_slash() -> void:
-	## Slash VFX oriented along the current aim (called from directional swings).
-	var player_node := get_parent()
-	if not player_node:
-		return
-	var dir: float = sign(scale.x) if scale.x != 0 else 1.0
-	# Convert the rig-local aim angle to a world rotation (mirrored rigs flip)
-	var world_angle := _aim_local_angle * dir
-	Fx.slash_effect(player_node.global_position, dir, _slash_downward, world_angle)
+	arc.global_position = origin
+	player_node.get_parent().add_child(arc)
+
+	# Animate: shrink width fast + fade out
+	var tw = arc.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(arc, "width", 0.0, 0.15).set_ease(Tween.EASE_OUT)
+	tw.tween_property(arc, "modulate:a", 0.0, 0.18)
+	tw.chain().tween_callback(arc.queue_free)
+
+	# Sharp sparks
+	for i in range(4):
+		var p = ColorRect.new()
+		p.size = Vector2(8, 2) # stretched lines instead of dots
+		p.color = Color(1.0, 1.0, 1.0, 0.8)
+		if dir < 0:
+			p.size = Vector2(-8, 2)
+		p.global_position = origin + Vector2(dir * randf_range(15, 30), randf_range(-15, 15))
+		p.rotation = deg_to_rad(randf_range(-20, 20))
+		p.z_index = 100
+		player_node.get_parent().add_child(p)
+		var tw2 = p.create_tween()
+		tw2.set_parallel(true)
+		tw2.tween_property(p, "global_position", p.global_position + Vector2(dir * randf_range(10, 20), randf_range(-10, 10)), 0.15)
+		tw2.tween_property(p, "scale", Vector2(0.1, 0.1), 0.15)
+		tw2.tween_property(p, "modulate:a", 0.0, 0.15)
+		tw2.chain().tween_callback(p.queue_free)
 
 
 func _trigger_thrust_dash() -> void:

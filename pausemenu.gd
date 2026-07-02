@@ -59,23 +59,19 @@ func _ready() -> void:
 		menu_buttons.append(btn)
 		original_positions.append(btn.position)
 	
-	# Connect pause button (scene file may already wire these — don't double-connect)
+	# Connect pause button
 	if pause_button_path:
 		pause_button = get_node(pause_button_path) as TouchScreenButton
 		if pause_button:
-			if not pause_button.pressed.is_connected(_on_pause_button_pressed):
-				pause_button.pressed.connect(_on_pause_button_pressed)
+			pause_button.pressed.connect(_on_pause_button_pressed)
 		else:
 			push_error("PauseMenu: Node at pause_button_path is not a TouchScreenButton!")
 	else:
 		push_error("PauseMenu: No PauseButton path assigned!")
 
-	if not resume_button.pressed.is_connected(_on_resumebutton_pressed):
-		resume_button.pressed.connect(_on_resumebutton_pressed)
-	if not retry_button.pressed.is_connected(_on_retrybutton_pressed):
-		retry_button.pressed.connect(_on_retrybutton_pressed)
-	if not return_button.pressed.is_connected(_on_returnbutton_pressed):
-		return_button.pressed.connect(_on_returnbutton_pressed)
+	resume_button.pressed.connect(_on_resumebutton_pressed)
+	retry_button.pressed.connect(_on_retrybutton_pressed)
+	return_button.pressed.connect(_on_returnbutton_pressed)
 
 func _apply_rpg_button_style(btn: Button) -> void:
 	if pixel_font:
@@ -145,7 +141,8 @@ func _on_resumebutton_pressed() -> void:
 
 func _on_retrybutton_pressed() -> void:
 	if is_transitioning: return
-	Global.respawn()
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func _on_returnbutton_pressed() -> void:
 	if is_transitioning: return

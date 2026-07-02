@@ -135,6 +135,19 @@ _data = {
 
 [node name="slime" type="CharacterBody2D"]
 script = ExtResource("1_00to6")
+hop_speed = null
+hop_jump_force = null
+hop_cooldown_min = null
+hop_cooldown_max = null
+aggro_speed = null
+aggro_jump_force = null
+aggro_hop_cooldown = null
+aggro_range = null
+aggro_time = null
+attack_distance = null
+patrol_distance = null
+min_scale = null
+max_scale = null
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_2dyno")
