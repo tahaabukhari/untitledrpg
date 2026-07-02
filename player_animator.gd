@@ -307,6 +307,22 @@ func play_hurt() -> void:
 		anim_player.seek(0.0, true)
 
 
+func play_roll() -> void:
+	## One-shot dodge roll tuck; always restarts.
+	current_state = "roll"
+	if anim_player.has_animation("roll"):
+		anim_player.play("roll")
+		anim_player.seek(0.0, true)
+
+
+func play_parry() -> void:
+	## One-shot guard pose (window + recovery); always restarts.
+	current_state = "parry"
+	if anim_player.has_animation("parry"):
+		anim_player.play("parry")
+		anim_player.seek(0.0, true)
+
+
 func play_death() -> void:
 	current_state = "death"
 	if anim_player.has_animation("death"):
@@ -326,6 +342,8 @@ func _build_all_animations() -> void:
 	lib.add_animation("long_fall", _make_long_fall())
 	lib.add_animation("hurt", _make_hurt())
 	lib.add_animation("death", _make_death())
+	lib.add_animation("roll", _make_roll())
+	lib.add_animation("parry", _make_parry())
 	
 	# Register default fist animations
 	if _fists_animator:
@@ -344,7 +362,7 @@ func _rebuild_locomotion_animations() -> void:
 	if not lib:
 		return
 	
-	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall", "hurt", "death"]
+	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall", "hurt", "death", "roll", "parry"]
 	var locomotion_builders = {
 		"idle": _make_idle,
 		"walk": _make_walk,
@@ -354,6 +372,8 @@ func _rebuild_locomotion_animations() -> void:
 		"long_fall": _make_long_fall,
 		"hurt": _make_hurt,
 		"death": _make_death,
+		"roll": _make_roll,
+		"parry": _make_parry,
 	}
 	
 	for anim_name in locomotion_names:
@@ -802,6 +822,124 @@ func _make_death() -> Animation:
 	a.track_set_interpolation_type(rt, Animation.INTERPOLATION_LINEAR)
 	a.track_insert_key(rt, 0.0, 0.0)
 	a.track_insert_key(rt, 0.8, -PI / 2.2)
+
+	return a
+
+
+# ─── ROLL: Grounded forward tuck (dodge) ─────────────────────────────────────
+
+func _make_roll() -> Animation:
+	## Full-body forward rotation with limbs tucked in — reuses the long_fall
+	## whole-skin rotation technique but grounded and one-shot. The controller
+	## resets PlayerSkin.rotation when the roll ends.
+	var a = Animation.new()
+	a.length = 0.35
+	a.loop_mode = Animation.LOOP_NONE
+
+	# Tuck: everything pulls toward the center
+	_pos(a, "TorsoPivot", [
+		[0.0,  base_torso],
+		[0.08, base_torso + Vector2(0, 2)],
+		[0.3,  base_torso + Vector2(0, 2)],
+		[0.35, base_torso],
+	])
+	_rot(a, "TorsoPivot", [[0.0, 0.0], [0.35, 0.0]])
+	_pos(a, "HeadPivot", [
+		[0.0,  base_head],
+		[0.08, base_head + Vector2(2, 4)],
+		[0.3,  base_head + Vector2(2, 4)],
+		[0.35, base_head],
+	])
+	_pos(a, "LeftArmPivot", [
+		[0.0,  base_larm],
+		[0.08, base_larm + Vector2(-2, 2)],
+		[0.3,  base_larm + Vector2(-2, 2)],
+		[0.35, base_larm],
+	])
+	_rot(a, "LeftArmPivot", [[0.0, base_larm_rot], [0.1, base_larm_rot + 1.2], [0.35, base_larm_rot]])
+	_pos(a, "RightArmPivot", [
+		[0.0,  base_rarm],
+		[0.08, base_rarm + Vector2(2, 2)],
+		[0.3,  base_rarm + Vector2(2, 2)],
+		[0.35, base_rarm],
+	])
+	_rot(a, "RightArmPivot", [[0.0, base_rarm_rot], [0.1, base_rarm_rot - 1.2], [0.35, base_rarm_rot]])
+	_pos(a, "LeftLegPivot", [
+		[0.0,  base_lleg],
+		[0.08, base_lleg + Vector2(1, -2)],
+		[0.3,  base_lleg + Vector2(1, -2)],
+		[0.35, base_lleg],
+	])
+	_rot(a, "LeftLegPivot", [[0.0, 0.0], [0.1, 0.9], [0.35, 0.0]])
+	_pos(a, "RightLegPivot", [
+		[0.0,  base_rleg],
+		[0.08, base_rleg + Vector2(-1, -2)],
+		[0.3,  base_rleg + Vector2(-1, -2)],
+		[0.35, base_rleg],
+	])
+	_rot(a, "RightLegPivot", [[0.0, 0.0], [0.1, -0.9], [0.35, 0.0]])
+
+	# FULL BODY forward rotation (mirrors automatically with scale.x flip)
+	var rt := a.add_track(Animation.TYPE_VALUE)
+	a.track_set_path(rt, ".:rotation")
+	a.track_set_interpolation_type(rt, Animation.INTERPOLATION_LINEAR)
+	a.track_insert_key(rt, 0.0, 0.0)
+	a.track_insert_key(rt, 0.35, TAU)
+
+	return a
+
+
+# ─── PARRY: Guard pose (window + recovery) ───────────────────────────────────
+
+func _make_parry() -> Animation:
+	var a = Animation.new()
+	a.length = 0.45
+	a.loop_mode = Animation.LOOP_NONE
+
+	# Both arms snap up into a cross-guard in front of the chest, then relax
+	_pos(a, "LeftArmPivot", [
+		[0.0,  base_larm],
+		[0.05, base_larm + Vector2(6, -3)],
+		[0.28, base_larm + Vector2(6, -3)],
+		[0.45, base_larm],
+	])
+	_rot(a, "LeftArmPivot", [
+		[0.0,  base_larm_rot],
+		[0.05, base_larm_rot - 0.9],
+		[0.28, base_larm_rot - 0.9],
+		[0.45, base_larm_rot],
+	])
+	_pos(a, "RightArmPivot", [
+		[0.0,  base_rarm],
+		[0.05, base_rarm + Vector2(7, -2)],
+		[0.28, base_rarm + Vector2(7, -2)],
+		[0.45, base_rarm],
+	])
+	_rot(a, "RightArmPivot", [
+		[0.0,  base_rarm_rot],
+		[0.05, base_rarm_rot - 0.7],
+		[0.28, base_rarm_rot - 0.7],
+		[0.45, base_rarm_rot],
+	])
+
+	# Slight brace: torso leans back, legs plant wide
+	_pos(a, "TorsoPivot", [
+		[0.0,  base_torso],
+		[0.05, base_torso + Vector2(-1.5, 0.5)],
+		[0.28, base_torso + Vector2(-1.5, 0.5)],
+		[0.45, base_torso],
+	])
+	_rot(a, "TorsoPivot", [[0.0, 0.0], [0.05, -0.08], [0.28, -0.08], [0.45, 0.0]])
+	_pos(a, "HeadPivot", [
+		[0.0,  base_head],
+		[0.05, base_head + Vector2(-1, 0.5)],
+		[0.28, base_head + Vector2(-1, 0.5)],
+		[0.45, base_head],
+	])
+	_rot(a, "LeftLegPivot",  [[0.0, 0.0], [0.05, -0.12], [0.28, -0.12], [0.45, 0.0]])
+	_rot(a, "RightLegPivot", [[0.0, 0.0], [0.05, 0.12], [0.28, 0.12], [0.45, 0.0]])
+	_pos(a, "LeftLegPivot",  [[0.0, base_lleg], [0.45, base_lleg]])
+	_pos(a, "RightLegPivot", [[0.0, base_rleg], [0.45, base_rleg]])
 
 	return a
 

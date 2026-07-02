@@ -2,10 +2,19 @@ extends CharacterBody2D
 
 const SPEED = 350.0
 const JUMP_VELOCITY = -400.0
-const DASH_VELOCITY = 2000.0
-const DASH_TIME = 0.02
-const DASH_COOLDOWN = 0.5
 const ATTACK_TEXT_TIME = 0.5
+
+# Dodge roll (replaces the old reversed evade dash)
+const ROLL_SPEED := 480.0
+const ROLL_TIME := 0.35
+const ROLL_COOLDOWN := 0.6
+const ROLL_COST := 25
+
+# Parry
+const PARRY_WINDOW := 0.2
+const PARRY_RECOVERY := 0.25
+const PARRY_COOLDOWN := 0.5
+const PARRY_COST := 10
 
 @onready var joystick = $TouchControls/JOYSTICK
 @onready var attack_button = $TouchControls/AttackButton
@@ -31,8 +40,6 @@ var max_mana := 100
 var mana := 0
 var current_class := "Warrior"
 
-const DASH_COST := 33
-
 var can_double_jump := false
 var double_jump_lockout := 0.0
 const DOUBLE_JUMP_COST := 20
@@ -46,10 +53,18 @@ var joystick_vector := Vector2.ZERO
 var facing := 1
 var attack_text_timer := 0.0
 
-var dash_timer := 0.0
-var dash_cooldown := 0.0
-var is_dashing := false
-var dash_direction := Vector2.ZERO
+# Dodge roll state
+var is_rolling := false
+var roll_timer := 0.0
+var roll_cooldown := 0.0
+var roll_direction := 1
+
+# Parry state
+var is_parrying := false
+var parry_timer := 0.0
+var parry_recovery_timer := 0.0
+var parry_cooldown_timer := 0.0
+
 var fall_timer := 0.0
 const LONG_FALL_THRESHOLD := 2.0  # seconds before switching to long_fall anim
 
@@ -248,8 +263,7 @@ func _on_jump_input() -> void:
 
 
 func _on_parry_pressed() -> void:
-	# Parry lands in Phase 3 — wired now so the input layer stays stable.
-	pass
+	_perform_parry()
 
 
 func _on_attack_released(charge_level: float) -> void:
@@ -273,6 +287,8 @@ func _gameplay_blocked() -> bool:
 
 func _perform_jump() -> void:
 	## Single jump path shared by keyboard and the touch jump button.
+	if is_rolling or is_parrying or is_dead:
+		return
 	stamina_regen_paused = true
 	if is_on_floor():
 		velocity.y = JUMP_VELOCITY
@@ -317,19 +333,35 @@ func _physics_process(delta: float) -> void:
 		if hurt_timer <= 0.0:
 			is_hurt = false
 
-	# Dash logic
-	if is_dashing:
+	# Parry timers
+	if is_parrying:
 		stamina_regen_paused = true
-		dash_timer -= delta
-		velocity = dash_direction * DASH_VELOCITY
+		parry_timer -= delta
+		if parry_timer <= 0.0:
+			is_parrying = false
+			parry_recovery_timer = PARRY_RECOVERY
+	elif parry_recovery_timer > 0.0:
+		parry_recovery_timer -= delta
+	if parry_cooldown_timer > 0.0:
+		parry_cooldown_timer -= delta
+
+	# Dodge roll: roll-driven movement, i-frames handled via invuln_timer
+	if is_rolling:
+		stamina_regen_paused = true
+		roll_timer -= delta
+		velocity.x = roll_direction * ROLL_SPEED
+		if not is_on_floor():
+			velocity.y += ProjectSettings.get_setting("physics/2d/default_gravity") * delta
 		move_and_slide()
-		if dash_timer <= 0.0:
-			is_dashing = false
+		if roll_timer <= 0.0:
+			is_rolling = false
+			if player_skin:
+				player_skin.rotation = 0.0
 		update_bars()
 		return
 
-	if dash_cooldown > 0.0:
-		dash_cooldown -= delta
+	if roll_cooldown > 0.0:
+		roll_cooldown -= delta
 
 	# Wall sliding logic: reduce falling speed by 30% only if has stamina
 	var is_wall_slide := false
@@ -355,8 +387,8 @@ func _physics_process(delta: float) -> void:
 	# (Jump input arrives via the PlayerInput layer → _on_jump_input)
 
 	# Left/right movement via joystick (suppressed during hitstun so
-	# knockback impulses aren't immediately overwritten)
-	if is_hurt:
+	# knockback impulses aren't immediately overwritten; parry holds ground)
+	if is_hurt or is_parrying or parry_recovery_timer > 0.0:
 		velocity.x = move_toward(velocity.x, 0, SPEED * delta * 6.0)
 	elif abs(joystick_vector.x) > 0.1:
 		velocity.x = joystick_vector.x * SPEED
@@ -409,7 +441,8 @@ func _physics_process(delta: float) -> void:
 	# ── Animation state ──────────────────────────────────────────────────
 	if attack_cooldown_timer > 0.0:
 		attack_cooldown_timer -= delta
-	if player_skin and player_skin.has_method("play_state") and not is_attacking and not is_hurt:
+	if player_skin and player_skin.has_method("play_state") and not is_attacking and not is_hurt \
+			and not is_parrying and parry_recovery_timer <= 0.0:
 		if not is_on_floor() and velocity.y < 0:
 			fall_timer = 0.0
 			player_skin.play_state("jump")
@@ -425,9 +458,7 @@ func _physics_process(delta: float) -> void:
 			if fall_timer > 0.0 and player_skin:
 				player_skin.rotation = 0.0
 			fall_timer = 0.0
-			if is_dashing:
-				player_skin.play_state("run")
-			elif abs(joystick_vector.x) > 0.6:
+			if abs(joystick_vector.x) > 0.6:
 				player_skin.play_state("run")
 			elif abs(joystick_vector.x) > 0.1:
 				player_skin.play_state("walk")
@@ -505,7 +536,7 @@ func get_wall_push_direction() -> int:
 	return 0
 
 func _on_attack_button_pressed() -> void:
-	if is_attacking or attack_cooldown_timer > 0.0:
+	if is_attacking or attack_cooldown_timer > 0.0 or is_rolling or is_parrying:
 		return
 	if equipped_weapon.stamina_cost > 0 and stamina < equipped_weapon.stamina_cost:
 		return
@@ -535,7 +566,7 @@ func _on_attack_button_pressed() -> void:
 
 
 func _on_attack_charged() -> void:
-	if is_attacking:
+	if is_attacking or is_rolling or is_parrying:
 		return
 	if stamina < equipped_weapon.charged_stamina_cost:
 		return  # not enough stamina
@@ -621,9 +652,33 @@ func take_damage(amount: int, source_pos: Vector2, knockback: Vector2 = Vector2.
 	return true
 
 
-func _try_parry(_source_pos: Vector2, _attacker: Node) -> bool:
-	# Implemented in Phase 3 (parry window + facing check + stagger).
-	return false
+func _try_parry(source_pos: Vector2, attacker: Node) -> bool:
+	## Perfect parry: inside the window AND the attack comes from the front.
+	if not is_parrying:
+		return false
+	var from_dir: float = signf(source_pos.x - global_position.x)
+	if from_dir != 0.0 and int(from_dir) != facing:
+		return false  # hit from behind — parry fails
+
+	# Success: consume the window, negate all damage
+	is_parrying = false
+	parry_timer = 0.0
+	parry_recovery_timer = 0.0
+	invuln_timer = maxf(invuln_timer, 0.3)  # brief safety after the deflect
+	Fx.parry_spark(global_position + Vector2(facing * 14, -6))
+	_flash_skin(Color(1.4, 1.4, 1.6))
+
+	# Counter window: next attack is immediately available
+	attack_cooldown_timer = 0.0
+
+	if attacker and is_instance_valid(attacker):
+		if attacker.has_method("reflect"):
+			# Projectiles/beams bounce back at their source
+			attacker.reflect()
+		elif attacker.has_method("apply_stagger"):
+			var push: Vector2 = Vector2(facing * 260.0, -120.0)
+			attacker.apply_stagger(1.2, push)
+	return true
 
 
 func _flash_skin(color: Color) -> void:
@@ -639,7 +694,8 @@ func die() -> void:
 		return
 	is_dead = true
 	is_attacking = false
-	is_dashing = false
+	is_rolling = false
+	is_parrying = false
 	health = 0
 	update_bars()
 	if player_skin:
@@ -688,24 +744,52 @@ func _on_jump_button_pressed() -> void:
 	_perform_jump()
 
 func _on_evade_button_pressed() -> void:
+	# Touch DODGE button + keyboard dodge action both land here
+	_perform_dodge_roll()
+
+
+func _perform_dodge_roll() -> void:
+	## Directional roll with i-frames — replaces the old reversed evade dash.
+	if _gameplay_blocked() or is_rolling or is_attacking or is_parrying:
+		return
+	if roll_cooldown > 0.0 or stamina < ROLL_COST:
+		return
 	stamina_regen_paused = true
+	stamina -= ROLL_COST
 	saturation = max(saturation - SAT_ACTION_COST, 0.0)
-	if dash_cooldown > 0.0 or is_dashing:
-		return
-	if stamina < DASH_COST:
-		return
 
-	var dash_vec = joystick_vector
-	if dash_vec.length() < 0.2:
-		dash_vec = Vector2(-facing, 0)
+	# Roll toward movement input; fall back to facing
+	if absf(joystick_vector.x) > 0.2:
+		roll_direction = int(signf(joystick_vector.x))
 	else:
-		dash_vec = -dash_vec.normalized()
-	dash_direction = dash_vec
-	is_dashing = true
-	dash_timer = DASH_TIME
-	dash_cooldown = DASH_COOLDOWN
+		roll_direction = facing
+	facing = roll_direction
+	if player_skin:
+		player_skin.scale.x = abs(player_skin.scale.x) * facing
 
-	stamina -= DASH_COST
+	is_rolling = true
+	roll_timer = ROLL_TIME
+	roll_cooldown = ROLL_COOLDOWN
+	invuln_timer = maxf(invuln_timer, ROLL_TIME)  # i-frames for the whole roll
+	if player_skin and player_skin.has_method("play_roll"):
+		player_skin.play_roll()
+
+
+func _perform_parry() -> void:
+	## Short guard window; a hit landing inside it (from the front) is negated
+	## and the attacker is staggered (see _try_parry).
+	if _gameplay_blocked() or is_rolling or is_attacking or is_parrying:
+		return
+	if parry_cooldown_timer > 0.0 or parry_recovery_timer > 0.0 or stamina < PARRY_COST:
+		return
+	stamina_regen_paused = true
+	stamina -= PARRY_COST
+	saturation = max(saturation - SAT_ACTION_COST, 0.0)
+	is_parrying = true
+	parry_timer = PARRY_WINDOW
+	parry_cooldown_timer = PARRY_COOLDOWN
+	if player_skin and player_skin.has_method("play_parry"):
+		player_skin.play_parry()
 
 func get_direction_name(vec: Vector2) -> String:
 	if vec.length() < 0.3:

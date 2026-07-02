@@ -72,7 +72,7 @@ offset_left = -58.0
 offset_top = -45.0
 offset_right = 57.0
 offset_bottom = 54.0
-text = "EVADE
+text = "DODGE
 "
 
 [node name="PauseButton" type="TouchScreenButton" parent="."]

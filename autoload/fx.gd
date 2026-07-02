@@ -112,6 +112,48 @@ func swing_arc(origin: Vector2, dir: float) -> void:
 				p.queue_free())
 
 
+# ─── Parry spark (perfect-parry deflect burst) ───────────────────────────────
+
+func parry_spark(pos: Vector2) -> void:
+	# Bright radial burst of lines + a flash circle
+	for i in range(8):
+		var angle := TAU * float(i) / 8.0 + randf_range(-0.15, 0.15)
+		var line := Line2D.new()
+		line.width = 3.0
+		line.default_color = Color(1.0, 0.95, 0.5, 1.0)
+		line.z_index = 110
+		line.add_point(Vector2.ZERO)
+		line.add_point(Vector2(cos(angle), sin(angle)) * randf_range(10, 18))
+		add_child(line)
+		line.global_position = pos
+		var tw := line.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(line, "scale", Vector2(1.8, 1.8), 0.18).set_ease(Tween.EASE_OUT)
+		tw.tween_property(line, "modulate:a", 0.0, 0.2)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(line):
+				line.queue_free())
+
+	# Flash ring
+	var flash := Line2D.new()
+	flash.width = 4.0
+	flash.default_color = Color(1.0, 1.0, 0.9, 0.9)
+	flash.z_index = 110
+	flash.closed = true
+	for i in range(17):
+		var t := TAU * float(i) / 16.0
+		flash.add_point(Vector2(cos(t), sin(t)) * 8.0)
+	add_child(flash)
+	flash.global_position = pos
+	var tw2 := flash.create_tween()
+	tw2.set_parallel(true)
+	tw2.tween_property(flash, "scale", Vector2(3.0, 3.0), 0.22).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(flash, "modulate:a", 0.0, 0.22)
+	tw2.chain().tween_callback(func() -> void:
+		if is_instance_valid(flash):
+			flash.queue_free())
+
+
 # ─── Slash effect (bright sword arc) ─────────────────────────────────────────
 ## `dir` is the horizontal facing sign (1/-1). `angle` rotates the whole slash
 ## plane (radians, world space) for directional attacks; 0 = horizontal slash.
