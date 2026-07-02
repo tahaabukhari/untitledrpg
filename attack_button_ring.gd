@@ -1,14 +1,15 @@
 extends Control
 ## Custom ring-shaped attack button with charge progress arc and glow.
+## The ring only reports press/release — the PlayerInput layer owns the
+## continuous charge level and drives the visual arc via set_charge().
 
-signal attack_tapped
-signal attack_charged
+signal attack_pressed
+signal attack_released
 
 @export var ring_radius := 42.0
 @export var ring_thickness := 4.0
-@export var charge_time := 1.0  # seconds to fully charge
 
-var charge_progress := 0.0  # 0.0 → 1.0
+var charge_progress := 0.0  # 0.0 → 1.0 (display only, fed by PlayerInput)
 var is_held := false
 var is_fully_charged := false
 var glow_tween: Tween = null
@@ -19,19 +20,26 @@ var charge_color := Color(1.0, 0.85, 0.2, 1.0)
 var full_color := Color(1.0, 0.95, 0.4, 1.0)
 var text_color := Color(1.0, 1.0, 1.0, 0.9)
 
+
 func _ready() -> void:
 	# Set minimum size so the control has a clickable area
 	custom_minimum_size = Vector2(ring_radius * 2 + 20, ring_radius * 2 + 20)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
-func _process(delta: float) -> void:
-	if is_held and not is_fully_charged:
-		charge_progress = minf(charge_progress + delta / charge_time, 1.0)
-		if charge_progress >= 1.0:
-			is_fully_charged = true
-			_start_glow()
-		queue_redraw()
+## Called by the PlayerInput layer each frame while charging (and with 0.0 on release).
+func set_charge(level: float) -> void:
+	charge_progress = clampf(level, 0.0, 1.0)
+	var now_full := charge_progress >= 1.0
+	if now_full and not is_fully_charged:
+		is_fully_charged = true
+		_start_glow()
+	elif not now_full and is_fully_charged:
+		is_fully_charged = false
+		if glow_tween:
+			glow_tween.kill()
+		modulate = Color.WHITE
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -87,13 +95,14 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _on_press() -> void:
+	if is_held:
+		return
 	is_held = true
-	charge_progress = 0.0
-	is_fully_charged = false
 	if glow_tween:
 		glow_tween.kill()
 	modulate = Color.WHITE
 	queue_redraw()
+	attack_pressed.emit()
 
 
 func _on_release() -> void:
@@ -103,15 +112,8 @@ func _on_release() -> void:
 	if glow_tween:
 		glow_tween.kill()
 	modulate = Color.WHITE
-
-	if is_fully_charged:
-		attack_charged.emit()
-	else:
-		attack_tapped.emit()
-
-	charge_progress = 0.0
-	is_fully_charged = false
 	queue_redraw()
+	attack_released.emit()
 
 
 func _start_glow() -> void:

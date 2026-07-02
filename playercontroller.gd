@@ -14,6 +14,7 @@ const ATTACK_TEXT_TIME = 0.5
 @onready var attack_label = $AttackDirection
 @onready var player_skin = $PlayerSkin
 @onready var ground_ray: RayCast2D = $GroundRay
+@onready var input_ctrl: PlayerInput = $PlayerInput
 
 var player_hud: Control = null
 var profile_ui = null
@@ -84,12 +85,21 @@ var hp_regen_accum := 0.0
 
 func _ready():
 	add_to_group("player")
-	print("Joystick reference:", joystick)
-	joystick.joystick_moved.connect(_on_joystick_moved)
 	if not evade_button.pressed.is_connected(_on_evade_button_pressed):
 		evade_button.pressed.connect(_on_evade_button_pressed)
 	attack_label.text = ""
 	attack_label.visible = false
+
+	# Unified input layer — touch and keyboard/mouse both route through it
+	input_ctrl.setup(self, joystick, $TouchControls/AttackButton/RingUI, $TouchControls)
+	input_ctrl.move_changed.connect(_on_move_input)
+	input_ctrl.jump_pressed.connect(_on_jump_input)
+	input_ctrl.dodge_pressed.connect(_on_evade_button_pressed)
+	input_ctrl.parry_pressed.connect(_on_parry_pressed)
+	input_ctrl.attack_released.connect(_on_attack_released)
+	input_ctrl.inventory_toggle_pressed.connect(_on_inv_button_pressed)
+	input_ctrl.profile_toggle_pressed.connect(_toggle_profile)
+	input_ctrl.charge_time = equipped_weapon.charge_time
 
 	# Wire attack hitbox detection
 	if player_skin:
@@ -211,13 +221,45 @@ func _enable_touch_controls() -> void:
 		tc.set_process_input(true)
 	if joystick:
 		joystick.set_process_input(true)
+	# Respect the current input mode (KBM keeps the buttons hidden)
+	if input_ctrl:
+		input_ctrl.refresh_touch_visibility()
 
-func _on_joystick_moved(movement: Vector2):
+func _on_move_input(movement: Vector2):
 	joystick_vector = movement
 	if abs(movement.x) > 0.1:
 		facing = sign(movement.x)
 		if player_skin:
 			player_skin.scale.x = abs(player_skin.scale.x) * facing
+
+
+func _on_jump_input() -> void:
+	if _gameplay_blocked():
+		return
+	_perform_jump()
+
+
+func _on_parry_pressed() -> void:
+	# Parry lands in Phase 3 — wired now so the input layer stays stable.
+	pass
+
+
+func _on_attack_released(charge_level: float) -> void:
+	if _gameplay_blocked():
+		return
+	if charge_level >= 1.0:
+		_on_attack_charged()
+	else:
+		_on_attack_button_pressed()
+
+
+func _gameplay_blocked() -> bool:
+	## Combat/movement input is ignored while menus are open.
+	if inventory_ui != null and inventory_ui.is_open:
+		return true
+	if profile_ui != null:
+		return true
+	return false
 
 func _perform_jump() -> void:
 	## Single jump path shared by keyboard and the touch jump button.
@@ -284,9 +326,7 @@ func _physics_process(delta: float) -> void:
 			double_jump_lockout = 0
 			can_double_jump = false
 
-	# Jump logic (floor, wall, double jump) — single shared path
-	if Input.is_action_just_pressed("ui_accept"):
-		_perform_jump()
+	# (Jump input arrives via the PlayerInput layer → _on_jump_input)
 
 	# Left/right movement via joystick
 	if abs(joystick_vector.x) > 0.1:
@@ -482,13 +522,15 @@ const DEFAULT_WEAPON: WeaponData = preload("res://weapons/weapon_fists.tres")
 
 func _on_weapon_equipped(weapon: WeaponData) -> void:
 	equipped_weapon = weapon
-	print("Equipped: ", weapon.weapon_name)
+	if input_ctrl:
+		input_ctrl.charge_time = weapon.charge_time
 	if player_skin and player_skin.has_method("equip_weapon_visual"):
 		player_skin.equip_weapon_visual(weapon)
 
 func _on_weapon_unequipped() -> void:
 	equipped_weapon = DEFAULT_WEAPON
-	print("Unequipped weapon, reverting to fists")
+	if input_ctrl:
+		input_ctrl.charge_time = DEFAULT_WEAPON.charge_time
 	if player_skin and player_skin.has_method("unequip_weapon_visual"):
 		player_skin.unequip_weapon_visual()
 

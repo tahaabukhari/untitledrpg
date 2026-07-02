@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="WeaponData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://starter_sword_icon" path="res://sprites/weapons/starter/starter-sword.png" id="2_icon"]
+[ext_resource type="Texture2D" path="res://sprites/weapons/starter/starter-sword.png" id="2_icon"]
 [ext_resource type="Script" path="res://weapons/animators/sword_animator.gd" id="3_animator"]
 
 [resource]

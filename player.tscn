@@ -1,6 +1,7 @@
-[gd_scene load_steps=17 format=3 uid="uid://qjw5vpdkfuts"]
+[gd_scene load_steps=18 format=3 uid="uid://qjw5vpdkfuts"]
 
 [ext_resource type="Script" path="res://playercontroller.gd" id="1_5eqdt"]
+[ext_resource type="Script" path="res://input_controller.gd" id="1_input"]
 [ext_resource type="PackedScene" uid="uid://dmhx1vjxbl1ye" path="res://touchcontrols.tscn" id="2_ntdwc"]
 [ext_resource type="Script" path="res://joystick.gd" id="3_8ed26"]
 [ext_resource type="Script" path="res://player_hud.gd" id="4_hud"]
@@ -23,6 +24,9 @@ size = Vector2(8, 16)
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_5eqdt")
+
+[node name="PlayerInput" type="Node" parent="."]
+script = ExtResource("1_input")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(2, 3)
@@ -173,8 +177,6 @@ script = ExtResource("4_hud")
 
 [node name="InventoryUI" parent="HUDLayer" instance=ExtResource("5_inv")]
 
-[connection signal="attack_charged" from="TouchControls/AttackButton/RingUI" to="." method="_on_attack_charged"]
-[connection signal="attack_tapped" from="TouchControls/AttackButton/RingUI" to="." method="_on_attack_button_pressed"]
 [connection signal="pressed" from="TouchControls/JumpButton" to="." method="_on_jump_button_pressed"]
 [connection signal="pressed" from="TouchControls/EvadeButton" to="." method="_on_evade_button_pressed"]
 
