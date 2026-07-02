@@ -673,111 +673,19 @@ func _disable_hitbox() -> void:
 
 
 func _spawn_swing_arc() -> void:
-	var player_node = get_parent()
+	var player_node := get_parent()
 	if not player_node:
 		return
 	var dir: float = sign(scale.x) if scale.x != 0 else 1.0
-	var origin: Vector2 = player_node.global_position
-
-	var arc = Line2D.new()
-	arc.width = 4.0
-	arc.default_color = Color(1.0, 1.0, 0.8, 0.95)
-	arc.z_index = 100
-	arc.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	arc.end_cap_mode = Line2D.LINE_CAP_ROUND
-
-	var arc_radius := 20.0
-	for i in range(9):
-		var t: float = float(i) / 8.0
-		var angle: float = lerpf(-PI * 0.4, PI * 0.4, t)
-		var pt := Vector2(cos(angle) * arc_radius * dir, sin(angle) * arc_radius)
-		pt += Vector2(dir * 14, 0)
-		arc.add_point(pt)
-
-	arc.global_position = origin
-	player_node.get_parent().add_child(arc)
-
-	var tw = arc.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(arc, "width", 0.0, 0.2).set_ease(Tween.EASE_IN)
-	tw.tween_property(arc, "modulate:a", 0.0, 0.22)
-	tw.chain().tween_callback(arc.queue_free)
-
-	for i in range(5):
-		var p = ColorRect.new()
-		p.size = Vector2(3, 3)
-		p.color = Color(1.0, 0.9, 0.5, 0.9)
-		p.global_position = origin + Vector2(dir * randf_range(10, 28), randf_range(-12, 12))
-		p.z_index = 100
-		player_node.get_parent().add_child(p)
-		var tw2 = p.create_tween()
-		tw2.set_parallel(true)
-		tw2.tween_property(p, "global_position", p.global_position + Vector2(dir * randf_range(6, 16), randf_range(-8, 8)), 0.22)
-		tw2.tween_property(p, "modulate:a", 0.0, 0.22)
-		tw2.chain().tween_callback(p.queue_free)
+	Fx.swing_arc(player_node.global_position, dir)
 
 
 func _spawn_sword_slash_effect(downward: bool) -> void:
-	var player_node = get_parent()
+	var player_node := get_parent()
 	if not player_node:
 		return
 	var dir: float = sign(scale.x) if scale.x != 0 else 1.0
-	var origin: Vector2 = player_node.global_position
-
-	var arc = Line2D.new()
-	arc.width = 12.0
-	arc.default_color = Color(1.0, 1.0, 1.0, 0.9)  # Bright white for sword slash
-	arc.z_index = 105
-	arc.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	arc.end_cap_mode = Line2D.LINE_CAP_ROUND
-	
-	var arc_radius := 26.0
-	
-	# Angles depend on swing direction
-	var start_angle: float
-	var end_angle: float
-	if downward:
-		start_angle = -PI * 0.6
-		end_angle = PI * 0.4
-	else:
-		start_angle = PI * 0.6
-		end_angle = -PI * 0.4
-	
-	# More points for smoother sword arc
-	for i in range(12):
-		var t: float = float(i) / 11.0
-		var angle: float = lerpf(start_angle, end_angle, t)
-		var pt := Vector2(cos(angle) * arc_radius * dir, sin(angle) * arc_radius)
-		pt += Vector2(dir * 20, -5) # pushed out and up
-		arc.add_point(pt)
-
-	arc.global_position = origin
-	player_node.get_parent().add_child(arc)
-
-	# Animate: shrink width fast + fade out
-	var tw = arc.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(arc, "width", 0.0, 0.15).set_ease(Tween.EASE_OUT)
-	tw.tween_property(arc, "modulate:a", 0.0, 0.18)
-	tw.chain().tween_callback(arc.queue_free)
-
-	# Sharp sparks
-	for i in range(4):
-		var p = ColorRect.new()
-		p.size = Vector2(8, 2) # stretched lines instead of dots
-		p.color = Color(1.0, 1.0, 1.0, 0.8)
-		if dir < 0:
-			p.size = Vector2(-8, 2)
-		p.global_position = origin + Vector2(dir * randf_range(15, 30), randf_range(-15, 15))
-		p.rotation = deg_to_rad(randf_range(-20, 20))
-		p.z_index = 100
-		player_node.get_parent().add_child(p)
-		var tw2 = p.create_tween()
-		tw2.set_parallel(true)
-		tw2.tween_property(p, "global_position", p.global_position + Vector2(dir * randf_range(10, 20), randf_range(-10, 10)), 0.15)
-		tw2.tween_property(p, "scale", Vector2(0.1, 0.1), 0.15)
-		tw2.tween_property(p, "modulate:a", 0.0, 0.15)
-		tw2.chain().tween_callback(p.queue_free)
+	Fx.slash_effect(player_node.global_position, dir, downward)
 
 
 func _trigger_thrust_dash() -> void:

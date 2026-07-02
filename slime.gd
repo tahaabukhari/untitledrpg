@@ -206,7 +206,7 @@ func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
 		return
 	hp -= amount
 	_flash_red()
-	_spawn_damage_number(amount)
+	Fx.damage_number(global_position, amount)
 	# Apply knockback impulse
 	if knockback.length() > 0:
 		velocity = knockback
@@ -220,22 +220,6 @@ func _flash_red() -> void:
 		sprite.modulate = Color(1, 0.2, 0.2, 1)
 		var tw = create_tween()
 		tw.tween_property(sprite, "modulate", Color(1, 1, 1, 1), 0.15)
-
-
-func _spawn_damage_number(amount: int) -> void:
-	var label = Label.new()
-	label.text = str(amount)
-	label.add_theme_font_size_override("font_size", 14)
-	label.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
-	label.global_position = global_position + Vector2(randf_range(-8, 8), -20)
-	label.z_index = 100
-	get_tree().current_scene.add_child(label)
-
-	var tw = create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(label, "global_position:y", label.global_position.y - 30, 0.6).set_ease(Tween.EASE_OUT)
-	tw.tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.3)
-	tw.chain().tween_callback(label.queue_free)
 
 
 func _die() -> void:

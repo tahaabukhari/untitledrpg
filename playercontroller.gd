@@ -86,7 +86,8 @@ func _ready():
 	add_to_group("player")
 	print("Joystick reference:", joystick)
 	joystick.joystick_moved.connect(_on_joystick_moved)
-	evade_button.pressed.connect(_on_evade_button_pressed)
+	if not evade_button.pressed.is_connected(_on_evade_button_pressed):
+		evade_button.pressed.connect(_on_evade_button_pressed)
 	attack_label.text = ""
 	attack_label.visible = false
 
@@ -130,19 +131,19 @@ func _ready():
 	var pixel_font = load("res://fonts/PressStart2P.ttf")
 	var TouchStyle = load("res://touch_button_style.gd")
 	
-	var atk_vis = $TouchControls/AttackButton/Button
+	var atk_vis = get_node_or_null("TouchControls/AttackButton/Button")
 	if atk_vis:
 		TouchStyle.apply(atk_vis, "attack", pixel_font)
-	
-	var jump_vis = $TouchControls/JumpButton/Button
+
+	var jump_vis = get_node_or_null("TouchControls/JumpButton/Button")
 	if jump_vis:
 		TouchStyle.apply(jump_vis, "jump", pixel_font)
-	
-	var evade_vis = $TouchControls/EvadeButton/Button
+
+	var evade_vis = get_node_or_null("TouchControls/EvadeButton/Button")
 	if evade_vis:
 		TouchStyle.apply(evade_vis, "evade", pixel_font)
-	
-	var pause_vis = $TouchControls/PauseButton/Button
+
+	var pause_vis = get_node_or_null("TouchControls/PauseButton/Button")
 	if pause_vis:
 		TouchStyle.apply(pause_vis, "pause", pixel_font)
 
@@ -218,24 +219,32 @@ func _on_joystick_moved(movement: Vector2):
 		if player_skin:
 			player_skin.scale.x = abs(player_skin.scale.x) * facing
 
-func _unhandled_input(event: InputEvent) -> void:
-	# Check if the player preview circle in HUD was touched/clicked
-	if event is InputEventScreenTouch and event.pressed:
-		var pos = event.position
-		# The circle is at ~ (119, 30) but the exact center drawn is (52, 58) with radius 39.0
-		# Bounding box roughly (13, 19) to (91, 97)
-		if pos.x > 10.0 and pos.x < 100.0 and pos.y > 10.0 and pos.y < 100.0:
-			# Emit a signal or directly toggle the profile UI (will implement next)
-			_toggle_profile()
-			get_viewport().set_input_as_handled()
-			return
-			
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		var pos = event.position
-		if pos.x > 10.0 and pos.x < 100.0 and pos.y > 10.0 and pos.y < 100.0:
-			_toggle_profile()
-			get_viewport().set_input_as_handled()
-			return
+func _perform_jump() -> void:
+	## Single jump path shared by keyboard and the touch jump button.
+	stamina_regen_paused = true
+	if is_on_floor():
+		velocity.y = JUMP_VELOCITY
+		jump_count = 1
+		can_double_jump = true
+		saturation = max(saturation - SAT_ACTION_COST, 0.0)
+	elif can_wall_jump() and stamina >= DOUBLE_JUMP_COST:
+		velocity.y = JUMP_VELOCITY
+		var wall_push := get_wall_push_direction()
+		if wall_push != 0:
+			velocity.x = wall_push * SPEED
+		stamina -= DOUBLE_JUMP_COST
+		jump_count = 2
+		can_double_jump = false
+		double_jump_lockout = 1.0
+		saturation = max(saturation - SAT_ACTION_COST, 0.0)
+	elif can_double_jump and jump_count == 1 and stamina >= DOUBLE_JUMP_COST and touching_wall_vertically():
+		velocity.y = JUMP_VELOCITY
+		stamina -= DOUBLE_JUMP_COST
+		jump_count = 2
+		can_double_jump = false
+		double_jump_lockout = 1.0
+		saturation = max(saturation - SAT_ACTION_COST, 0.0)
+
 
 func _physics_process(delta: float) -> void:
 	stamina_regen_paused = false
@@ -275,28 +284,9 @@ func _physics_process(delta: float) -> void:
 			double_jump_lockout = 0
 			can_double_jump = false
 
-	# Jump logic (floor, wall, double jump)
+	# Jump logic (floor, wall, double jump) — single shared path
 	if Input.is_action_just_pressed("ui_accept"):
-		stamina_regen_paused = true
-		if is_on_floor():
-			velocity.y = JUMP_VELOCITY
-			jump_count = 1
-			can_double_jump = true
-		elif can_wall_jump() and stamina >= DOUBLE_JUMP_COST:
-			velocity.y = JUMP_VELOCITY
-			var wall_push = get_wall_push_direction()
-			if wall_push != 0:
-				velocity.x = wall_push * SPEED
-			stamina -= DOUBLE_JUMP_COST
-			jump_count = 2
-			can_double_jump = false
-			double_jump_lockout = 1.0
-		elif can_double_jump and jump_count == 1 and stamina >= DOUBLE_JUMP_COST and touching_wall_vertically():
-			velocity.y = JUMP_VELOCITY
-			stamina -= DOUBLE_JUMP_COST
-			jump_count = 2
-			can_double_jump = false
-			double_jump_lockout = 1.0
+		_perform_jump()
 
 	# Left/right movement via joystick
 	if abs(joystick_vector.x) > 0.1:
@@ -524,49 +514,15 @@ func _on_attack_hit(body: Node2D) -> void:
 		var kb_dir := Vector2(facing, -0.3).normalized()
 		if body.has_method("take_damage"):
 			body.take_damage(dmg, kb_dir * current_attack_knockback)
-		_spawn_hit_particles(body.global_position)
+		Fx.hit_particles(body.global_position)
 
 
 func calc_attack_damage() -> int:
 	return equipped_weapon.calc_damage(stat_atk)
 
 
-func _spawn_hit_particles(pos: Vector2) -> void:
-	for i in range(5):
-		var p = ColorRect.new()
-		p.size = Vector2(2, 2)
-		p.color = Color(1.0, 0.95, 0.6, 1.0)
-		p.global_position = pos + Vector2(randf_range(-6, 6), randf_range(-6, 6))
-		p.z_index = 100
-		get_tree().current_scene.add_child(p)
-		var tw = create_tween()
-		tw.set_parallel(true)
-		tw.tween_property(p, "global_position:y", p.global_position.y - randf_range(8, 16), 0.25)
-		tw.tween_property(p, "modulate:a", 0.0, 0.25)
-		tw.chain().tween_callback(p.queue_free)
-
 func _on_jump_button_pressed() -> void:
-	stamina_regen_paused = true
-	saturation = max(saturation - SAT_ACTION_COST, 0.0)
-	if is_on_floor():
-		velocity.y = JUMP_VELOCITY
-		jump_count = 1
-		can_double_jump = true
-	elif can_wall_jump() and stamina >= DOUBLE_JUMP_COST:
-		velocity.y = JUMP_VELOCITY
-		var wall_push = get_wall_push_direction()
-		if wall_push != 0:
-			velocity.x = wall_push * SPEED
-		stamina -= DOUBLE_JUMP_COST
-		jump_count = 2
-		can_double_jump = false
-		double_jump_lockout = 1.0
-	elif can_double_jump and jump_count == 1 and stamina >= DOUBLE_JUMP_COST and touching_wall_vertically():
-		velocity.y = JUMP_VELOCITY
-		stamina -= DOUBLE_JUMP_COST
-		jump_count = 2
-		can_double_jump = false
-		double_jump_lockout = 1.0
+	_perform_jump()
 
 func _on_evade_button_pressed() -> void:
 	stamina_regen_paused = true

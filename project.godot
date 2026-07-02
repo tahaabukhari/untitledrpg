@@ -10,16 +10,15 @@ config_version=5
 
 [application]
 
+config/name="UNTITLED RPG"
 run/main_scene="res://titlescreen.tscn"
-config/features=PackedStringArray("4.3")
+config/features=PackedStringArray("4.3", "Mobile")
+config/icon="res://icon.png"
 
 [autoload]
 
 Global="*res://global.gd"
-config/name="UNTITLED RPG"
-config/features=PackedStringArray("4.3", "Mobile")
-config/icon="res://icon.png"
-config/stretch/mode="disabled"
+Fx="*res://autoload/fx.gd"
 
 [display]
 
@@ -31,6 +30,15 @@ window/stretch/mode="viewport"
 
 pointing/emulate_touch_from_mouse=true
 pointing/emulate_mouse_from_touch=false
+
+[layer_names]
+
+2d_physics/layer_1="Environment"
+2d_physics/layer_2="PlayerHitbox"
+2d_physics/layer_3="PlayerHurtbox"
+2d_physics/layer_4="EnemyHurtbox"
+2d_physics/layer_5="EnemyHitbox"
+2d_physics/layer_6="Projectile"
 
 [rendering]
 
