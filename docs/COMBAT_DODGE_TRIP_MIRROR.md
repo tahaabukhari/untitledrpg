@@ -246,6 +246,12 @@ I'll **build in the order you specify** — this is just the dependency-sane def
   the knockdown is a real punish window).
 - **Bipedal only** (§3.0): trippable = player + Mirror Warrior; everything else
   immune, including whisperer + boss.
+- **Slide knockdown is a 30% roll**, not guaranteed (balance patch `57ba82d`):
+  a slide always passes through with i-frames (evade), but only `SLIDE_TRIP_CHANCE`
+  = 0.3 per opponent-per-slide actually trips. A **successful** knockdown costs
+  **+50 stamina** on both sides (the Mirror has its own stamina pool + regen and
+  won't attempt a slide-trip it can't afford). `trip()` returns bool so the
+  slider only pays on a real knockdown.
 - **Mirror = SWORD only**, but must **trip the player, parry, and attack like the
   player**. Other classes/weapons mirrored later.
 - **Blood = punchy & gory**, and **only the Mirror bleeds for now** (routed via
