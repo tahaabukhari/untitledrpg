@@ -64,11 +64,11 @@ titlescreen.tscn ──START GAME──► class_selection.tscn ──► DemoMa
 | `weapons/animators/fists_animator.gd` | Default/unequip fallback. `attack_right/left`, `uppercut`. |
 | `weapons/animators/sword_animator.gd` | Warrior. 3-hit combo + charged thrust (`_trigger_thrust_dash`). |
 | `weapons/animators/staff_animator.gd` | Base staff: `staff_attack_right/left` melee. |
-| `weapons/animators/mage_staff_animator.gd` | extends StaffAnimator; adds `staff_charged` cast anim (laser body language). |
+| `weapons/animators/mage_staff_animator.gd` | extends StaffAnimator; adds `staff_charged` cast anim + `staff_aim` rifle stance (looping charge pose); tints the staff cool white-blue. Used by the beam staff. |
 | `weapons/animators/projectile_weapon_animator.gd` | Ranger bow. `bow_shot`/`bow_shot_charged` with `_fire_projectile` method track; **code-generates its bow texture** when WeaponData has no icon. |
 | `weapons/animators/wand_animator.gd` | Healer. `wand_flick_r/l` pokes + `wand_heal` channel pose; code-generated wand texture. |
 | `weapons/projectile.gd` | `class_name PlayerProjectile` (Area2D). Static `spawn(from, dir, dmg, spd)`; parents itself **under Fx** (scene-safe); `reflect()` for parries; sticks in walls. |
-| `weapons/*.tres` | `weapon_fists`, `starter_sword` (Warrior), `starter_staff` (Mage — `charged_style="laser"`), `ranger_bow`, `healer_wand`. |
+| `weapons/*.tres` | `weapon_fists`, `starter_sword` (Warrior), `starter_staff` (Mage default — plain `charged_style="melee"`), `mage_beam_staff` "Arcane Conduit" (the laser, `charged_style="laser"`, added to the mage's inventory to equip), `ranger_bow`, `healer_wand`. |
 
 ### Enemies
 | File | Role |
@@ -141,12 +141,18 @@ else                                        → _on_attack_button_pressed() (nor
 **Laser hold mechanics** (`playercontroller`): while charging a laser weapon
 the player locks into the `staff_aim` rifle stance (`_laser_stance_active()`
 gates locomotion + turns with the aim). At full charge a `ChargeCircle`
-(inner class — rotating rune ring) appears ahead of the orb, brightening and
-gaining stacks (1 per `STACK_INTERVAL`=2s, max 5, +8% damage each). Past
-`OVERDRIVE_HOLD_TIME`=10s the hold drains `OVERDRIVE_MANA_DRAIN`=8 mana/s;
-firing in overdrive = 1.6× width + helix beam (`Fx.beam(..., helix, stacks)`).
-If mana hits 0 mid-hold → `_break_charge_circle()`: `Fx.circle_break`,
-fizzle cooldown, charge cancelled, **no beam** (no auto-fire by design).
+(inner class — rotating rune ring, CONCENTRIC with the charge orb so they
+read as one cast) brightens and gains stack pips (1 per `STACK_INTERVAL`=2s,
+visual cap 5, +8% damage each). Colors: dynamic cyan→white gradient by charge,
+pure **white** in overdrive. Past `OVERDRIVE_HOLD_TIME`=10s the hold drains
+`OVERDRIVE_MANA_DRAIN`=8 mana/s and charge is **uncapped**: width freezes
+(`OVERDRIVE_WIDTH_MULT` once) while each extra second adds
+`OVERDRIVE_RANGE_PER_SEC`=240px range (wide) and `OVERDRIVE_DAMAGE_PER_SEC`=4
+damage (light), unbounded. Overdrive fires a white helix beam
+(`Fx.beam(..., helix, intensity)` — gradient core + counter-phased strands +
+dense white motes). If mana hits 0 mid-hold → `_break_charge_circle()`:
+`Fx.circle_break`, fizzle cooldown, charge cancelled, **no beam** (no
+auto-fire by design — the mana pool is the only limiter).
 
 ---
 
