@@ -21,7 +21,7 @@ const SLIDE_TIME := 0.4
 const SLIDE_IFRAMES := 0.32
 const SLIDE_TRIP_REACH := 48.0
 const SLIDE_TRIP_HEIGHT := 42.0
-const SLIDE_TRIP_CHANCE := 0.3         # only 30% of slide-unders actually knock down
+const SLIDE_TRIP_CHANCE := 0.6         # 60% of the player's slide-unders knock down (mirror stays 30%)
 const SLIDE_KNOCKDOWN_STAMINA := 50    # extra stamina burned on a SUCCESSFUL knockdown
 
 # Tripping / knockdown (bipeds only)

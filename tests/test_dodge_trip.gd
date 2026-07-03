@@ -83,8 +83,8 @@ func _run() -> void:
 	current_scene.add_child(blob)
 	blob.trippable = false                          # a legless dummy
 	await _wait_frames(5)
-	# Slide knockdown is a 30% ROLL (failures still pass through / evade), bipeds
-	# only, and a success burns +50 stamina. Verify statistically over many slides.
+	# Slide knockdown is a chance roll (player 60%, failures still pass through /
+	# evade), bipeds only, and a success burns +50 stamina. Verify statistically.
 	var knockdowns := 0
 	var blob_downs := 0
 	var stamina_on_knockdown := -1.0

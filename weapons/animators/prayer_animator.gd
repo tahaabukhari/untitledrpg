@@ -49,41 +49,44 @@ func _make_prayer_rub(pivots: Dictionary) -> Animation:
 	a.length = 0.7
 	a.step = 0.05
 
-	# Hands meet at the chest, then RUB — three quick opposing slides
-	var clasp_l := Vector2(2.5, -3.5)   # left hand at the clasp point
-	var clasp_r := Vector2(-0.5, -3.5)  # right hand just beneath/against it
+	# Palms press together in front of the chest (a proper prayer clasp) — the
+	# two hands sit ~1px apart, raised, and RUB with a small opposing up/down
+	# slide. No forward reach: they stay pressed together the whole time.
+	var clasp_l := Vector2(1.0, -5.0)    # left hand: just right of center, raised
+	var clasp_r := Vector2(0.0, -5.0)    # right hand: pressed against it
 	anim_pos(a, "LeftArmPivot", [
 		[0.0, g_larm],
-		[0.12, clasp_l],
-		[0.2, clasp_l + Vector2(1.2, -0.3)],   # rub forward
-		[0.28, clasp_l + Vector2(-1.0, 0.3)],  # rub back
-		[0.36, clasp_l + Vector2(1.2, -0.3)],
-		[0.44, clasp_l + Vector2(-1.0, 0.3)],
-		[0.52, clasp_l + Vector2(0.8, -0.2)],
-		[0.6, clasp_l],
+		[0.14, clasp_l],
+		[0.22, clasp_l + Vector2(0.2, -0.7)],   # slide up
+		[0.30, clasp_l + Vector2(-0.2, 0.7)],   # slide down
+		[0.38, clasp_l + Vector2(0.2, -0.7)],
+		[0.46, clasp_l + Vector2(-0.2, 0.7)],
+		[0.54, clasp_l + Vector2(0.1, -0.3)],
+		[0.60, clasp_l],
 		[0.7, g_larm],
 	])
+	# Rotate the forearm inward so the palm faces center, pointing up
 	anim_rot(a, "LeftArmPivot", [
 		[0.0, -0.1],
-		[0.12, -0.45],
-		[0.6, -0.45],
+		[0.14, 0.55],
+		[0.6, 0.55],
 		[0.7, -0.1],
 	])
 	anim_pos(a, "RightArmPivot", [
 		[0.0, g_rarm],
-		[0.12, clasp_r],
-		[0.2, clasp_r + Vector2(-1.2, 0.3)],   # opposite phase = rubbing
-		[0.28, clasp_r + Vector2(1.0, -0.3)],
-		[0.36, clasp_r + Vector2(-1.2, 0.3)],
-		[0.44, clasp_r + Vector2(1.0, -0.3)],
-		[0.52, clasp_r + Vector2(-0.8, 0.2)],
-		[0.6, clasp_r],
+		[0.14, clasp_r],
+		[0.22, clasp_r + Vector2(-0.2, 0.7)],   # opposite phase → hands rub together
+		[0.30, clasp_r + Vector2(0.2, -0.7)],
+		[0.38, clasp_r + Vector2(-0.2, 0.7)],
+		[0.46, clasp_r + Vector2(0.2, -0.7)],
+		[0.54, clasp_r + Vector2(-0.1, 0.3)],
+		[0.60, clasp_r],
 		[0.7, g_rarm],
 	])
 	anim_rot(a, "RightArmPivot", [
 		[0.0, 0.1],
-		[0.12, 0.45],
-		[0.6, 0.45],
+		[0.14, -0.55],
+		[0.6, -0.55],
 		[0.7, 0.1],
 	])
 
