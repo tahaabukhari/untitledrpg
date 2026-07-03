@@ -9,10 +9,11 @@ func setup_visual(weapon_sprite: Sprite2D, weapon_data: WeaponData, pivots: Dict
 		return
 	
 	weapon_sprite.texture = weapon_data.weapon_icon
-	weapon_sprite.scale = Vector2(0.62, 0.62)  # compact staff — was oversized at 1:1
+	weapon_sprite.scale = Vector2(0.42, 0.42)  # compact staff (was oversized)
 	weapon_sprite.rotation = deg_to_rad(-60)
-	weapon_sprite.position = Vector2(4, 2)
+	weapon_sprite.position = Vector2(3, 1)
 	weapon_sprite.offset = Vector2.ZERO
+	weapon_sprite.modulate = Color(1, 1, 1, 1)  # base staff: untinted
 	weapon_sprite.z_index = -1  # Behind hands
 	weapon_sprite.visible = true
 	

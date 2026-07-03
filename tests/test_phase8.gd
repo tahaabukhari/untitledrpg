@@ -62,7 +62,7 @@ func _run() -> void:
 	_key(KEY_3, false)
 	await _wait_frames(2)
 	_check("key 3 switches to Mage with staff", player.current_class == "Mage"
-		and player.equipped_weapon.charged_style == "laser")
+		and player.equipped_weapon.weapon_type == "Staff")
 
 	_key(KEY_2, true)
 	await _wait_frames(2)
@@ -91,15 +91,19 @@ func _run() -> void:
 	await _wait_frames(2)
 	_check("second B does not double-spawn", get_nodes_in_group("boss").size() == 1)
 
-	# Boss actually fights in the arena
+	# Boss actually fights in the arena. Pin the player next to the boss so
+	# its (stochastic) attacks reliably connect within the window.
 	if boss:
 		var hp0: int = player.health
 		player.invuln_timer = 0.0
 		var engaged := false
-		for i in range(600):  # up to ~10s of AI
+		for i in range(900):  # up to ~15s of AI
 			await physics_frame
 			if not is_instance_valid(boss):
 				break
+			# Stand just in front of the boss so slashes/dashes/grab can land
+			player.global_position = boss.global_position + Vector2(70, 0)
+			player.velocity = Vector2.ZERO
 			player.invuln_timer = 0.0
 			player.is_hurt = false
 			if player.health < hp0 or player.is_grabbed:

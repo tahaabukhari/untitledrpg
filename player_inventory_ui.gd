@@ -499,9 +499,10 @@ func _add_starting_items() -> void:
 	var cls = Global.current_class
 	match cls:
 		"Mage":
-			var staff = load("res://weapons/starter_staff.tres")
-			if staff:
-				add_item(staff)
+			# The Arcane Conduit (beam staff) — equip it to wield the charged laser
+			var beam_staff = load("res://weapons/mage_beam_staff.tres")
+			if beam_staff:
+				add_item(beam_staff)
 		"Warrior":
 			var sword = load("res://weapons/starter_sword.tres")
 			if sword:

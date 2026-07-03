@@ -142,6 +142,13 @@ func beam(start: Vector2, end: Vector2, width: float,
 	core.end_cap_mode = Line2D.LINE_CAP_ROUND
 	core.add_point(Vector2.ZERO)
 	core.add_point(end - start)
+	# Dynamic gradient along the beam: hot white core at the muzzle bleeding
+	# into the tinted glow color toward the impact point.
+	var cg := Gradient.new()
+	cg.set_color(0, Color(1, 1, 1, core_color.a))
+	cg.add_point(0.5, core_color)
+	cg.set_color(cg.get_point_count() - 1, Color(glow_color.r, glow_color.g, glow_color.b, core_color.a))
+	core.gradient = cg
 	add_child(core)
 	core.global_position = start
 
@@ -219,10 +226,17 @@ func _beam_helix(start: Vector2, end: Vector2, width: float,
 	var turns := maxf(length / 90.0, 2.0)  # helix frequency scales with length
 	var samples := int(clampf(length / 14.0, 16, 64))
 
+	# White helix strand gradient (bright white core → cool white edges)
+	var sg := Gradient.new()
+	sg.set_color(0, Color(1, 1, 1, 0.0))
+	sg.add_point(0.5, Color(1, 1, 1, 0.95))
+	sg.set_color(sg.get_point_count() - 1, Color(0.85, 0.92, 1.0, 0.0))
+
 	for phase in [0.0, PI]:
 		var strand := Line2D.new()
 		strand.width = strand_width
-		strand.default_color = Color(core_color.r, core_color.g * 0.9, 1.0, 0.85)
+		strand.default_color = Color(1, 1, 1, 0.9)
+		strand.gradient = sg
 		strand.z_index = 110
 		strand.begin_cap_mode = Line2D.LINE_CAP_ROUND
 		strand.end_cap_mode = Line2D.LINE_CAP_ROUND
@@ -242,21 +256,25 @@ func _beam_helix(start: Vector2, end: Vector2, width: float,
 			if is_instance_valid(strand):
 				strand.queue_free())
 
-	# Drifting energy motes shed along the beam
-	var mote_count := 8 + stacks * 2
+	# Drifting energy motes shed along the beam (denser, white, mixed sizes)
+	var mote_count := 16 + stacks * 4
 	for i in range(mote_count):
 		var m := ColorRect.new()
-		m.size = Vector2(2, 2)
-		m.color = Color(0.9, 0.8, 1.0, 0.9)
-		m.z_index = 109
+		var sz := randf_range(1.5, 3.5)
+		m.size = Vector2(sz, sz)
+		m.color = Color(1, 1, 1, randf_range(0.7, 1.0))
+		m.z_index = 111
 		add_child(m)
 		var t := randf()
-		m.global_position = start + dir * (t * length) + perp * randf_range(-amplitude, amplitude)
-		var drift := perp * randf_range(-24.0, 24.0) + dir * randf_range(-8.0, 8.0)
+		# Bias motes onto the helix strands so they read as shed energy
+		var strand_swing := sin(t * TAU * turns) * amplitude * sin(t * PI)
+		m.global_position = start + dir * (t * length) + perp * (strand_swing + randf_range(-amplitude * 0.4, amplitude * 0.4))
+		var drift := perp * randf_range(-30.0, 30.0) + dir * randf_range(-10.0, 10.0)
 		var twm := m.create_tween()
 		twm.set_parallel(true)
-		twm.tween_property(m, "global_position", m.global_position + drift, 0.4)
-		twm.tween_property(m, "modulate:a", 0.0, 0.4)
+		twm.tween_property(m, "global_position", m.global_position + drift, 0.45)
+		twm.tween_property(m, "modulate:a", 0.0, 0.45)
+		twm.tween_property(m, "scale", Vector2(0.2, 0.2), 0.45)
 		twm.chain().tween_callback(func() -> void:
 			if is_instance_valid(m):
 				m.queue_free())

@@ -53,9 +53,16 @@ func _run() -> void:
 	var skin: Node2D = player.get_node("PlayerSkin")
 	var anim: AnimationPlayer = skin.get_node("AnimPlayer")
 
+	# Equip the beam staff (the laser now lives on the Arcane Conduit, which
+	# the mage carries in inventory rather than wielding by default)
+	var beam_staff: WeaponData = load("res://weapons/mage_beam_staff.tres")
+	player._on_weapon_equipped(beam_staff)
+	await _wait_frames(2)
+	_check("beam staff is a laser weapon", player.equipped_weapon.charged_style == "laser")
+
 	# ── Staff resized ─────────────────────────────────────────────────────
 	var weapon_sprite: Sprite2D = skin.get_node("LeftArmPivot/WeaponSprite")
-	_check("staff sprite resized smaller", weapon_sprite.scale.x < 0.75)
+	_check("staff sprite resized smaller", weapon_sprite.scale.x < 0.5)
 
 	# ── Hold: charge_hold_time counts past full charge ────────────────────
 	player.mana = player.max_mana
@@ -108,6 +115,36 @@ func _run() -> void:
 		dealt > w.laser_max_damage)
 	_check("attack state engaged after firing", player.is_attacking or player.attack_cooldown_timer > 0.0)
 	await _wait_frames(60)
+
+	# ── Unlimited overdrive scaling: longer hold = wider RANGE (deterministic) ──
+	# A short-overdrive beam (11s) cannot reach a far dummy; a long-overdrive
+	# beam (25s) can — proving range grows without a cap. Width stays frozen.
+	player.is_attacking = false
+	player.attack_cooldown_timer = 0.0
+	player.facing = 1
+	input_ctrl.mode = 0
+	var far: CharacterBody2D = mann_scene.instantiate()
+	current_scene.add_child(far)
+	far.regen = false
+	far.global_position = player.global_position + Vector2(1600, -5)  # ~1600px out
+	await _wait_frames(5)
+	# 11s hold → overtime 1s → range ≈ 950 + 240 = 1190 (short of 1600)
+	player.mana = player.max_mana
+	var far_hp0: int = far.hp
+	player._fire_laser(1.0, 11.0)
+	await _wait_frames(5)
+	_check("short-overdrive beam falls short of the far target", far.hp == far_hp0)
+	player.is_attacking = false
+	player.attack_cooldown_timer = 0.0
+	# 25s hold → overtime 15s → range ≈ 950 + 3600 = 4550 (reaches 1600)
+	player.mana = player.max_mana
+	player._fire_laser(1.0, 25.0)
+	await _wait_frames(5)
+	_check("long-overdrive beam reaches far target (range grows unbounded)", far.hp < far_hp0)
+	far.queue_free()
+	player.is_attacking = false
+	player.attack_cooldown_timer = 0.0
+	await _wait_frames(5)
 
 	# ── Circle break: hold until mana runs dry → NO beam ──────────────────
 	player.is_attacking = false

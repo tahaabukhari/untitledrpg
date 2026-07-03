@@ -2,31 +2,24 @@
 
 [ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://sprites/weapons/starter/starter-staff.png" id="2_icon"]
-[ext_resource type="Script" path="res://weapons/animators/mage_staff_animator.gd" id="3_animator"]
+[ext_resource type="Script" path="res://weapons/animators/staff_animator.gd" id="3_animator"]
 
 [resource]
 script = ExtResource("1_script")
 weapon_name = "Starter Staff"
 weapon_type = "Staff"
-weapon_description = "A simple wooden staff imbued with faint arcane energy. Hold the attack to charge a piercing beam - the longer the charge, the farther and harder it strikes."
+weapon_description = "A simple wooden staff imbued with faint arcane energy. A dependable close-range caster's tool for aspiring mages."
 weapon_icon = ExtResource("2_icon")
 animator_script = ExtResource("3_animator")
 atk_min = 3
 atk_max = 6
 attack_cooldown = 0.1
 stamina_cost = 0.0
-charged_style = "laser"
+charged_style = "melee"
 charged_damage = 14
 charged_knockback = 200.0
-charged_stamina_cost = 0.0
-charge_time = 1.2
-laser_min_damage = 8
-laser_max_damage = 42
-laser_min_range = 220.0
-laser_max_range = 950.0
-laser_min_width = 3.0
-laser_max_width = 11.0
-laser_mana_cost = 30.0
+charged_stamina_cost = 12.0
+charge_time = 1.0
 attack_right_anim = "staff_attack_right"
 attack_left_anim = "staff_attack_left"
-charged_anim = "staff_charged"
+charged_anim = "staff_attack_right"

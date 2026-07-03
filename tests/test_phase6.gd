@@ -41,9 +41,13 @@ func _run() -> void:
 		e.queue_free()
 	await process_frame
 
-	# ── Auto-equip ────────────────────────────────────────────────────────
+	# ── Auto-equip + beam staff from inventory ────────────────────────────
 	_check("mage auto-equips starter staff", player.equipped_weapon.weapon_name == "Starter Staff")
-	_check("staff charged style is laser", player.equipped_weapon.charged_style == "laser")
+	# The laser now lives on the Arcane Conduit (carried in inventory); equip it
+	var conduit: WeaponData = load("res://weapons/mage_beam_staff.tres")
+	player._on_weapon_equipped(conduit)
+	await _wait_frames(2)
+	_check("beam staff charged style is laser", player.equipped_weapon.charged_style == "laser")
 
 	# Spawn a mannequin down-range
 	var mann_scene: PackedScene = load("res://enemies/mannequin.tscn")

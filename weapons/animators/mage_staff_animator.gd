@@ -6,6 +6,13 @@ class_name MageStaffAnimator
 ## this animation is the body language: plant, thrust staff, recoil.
 
 
+func setup_visual(weapon_sprite: Sprite2D, weapon_data: WeaponData, pivots: Dictionary) -> void:
+	super.setup_visual(weapon_sprite, weapon_data, pivots)
+	# The beam conduit reads as arcane: cool white-blue tint on the compact staff.
+	if weapon_sprite:
+		weapon_sprite.modulate = Color(0.7, 0.9, 1.15, 1.0)
+
+
 func get_attack_animations(pivots: Dictionary) -> Dictionary:
 	var anims := super.get_attack_animations(pivots)
 	anims["staff_charged"] = _make_cast(pivots)

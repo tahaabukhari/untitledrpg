@@ -92,9 +92,14 @@ var _charge_orb: Polygon2D = null    # growing laser-charge telegraph on the sta
 # hold drains extra mana — drain it dry and the circle BREAKS (attack fails).
 const OVERDRIVE_HOLD_TIME := 10.0    # hold longer than this = overdrive beam
 const OVERDRIVE_MANA_DRAIN := 8.0    # extra mana per second past 10s
-const STACK_INTERVAL := 2.0          # seconds of full-charge hold per stack
-const MAX_CHARGE_STACKS := 5
-const STACK_DAMAGE_BONUS := 0.08     # +8% damage per stack
+const STACK_INTERVAL := 2.0          # seconds of full-charge hold per visual stack pip
+const MAX_CHARGE_STACKS := 5         # visual pip cap only (damage keeps growing)
+const STACK_DAMAGE_BONUS := 0.08     # +8% damage per pip (pre-overdrive)
+# Overdrive is UNLIMITED: past OVERDRIVE_HOLD_TIME each extra second grows the
+# beam's RANGE by a wide margin and DAMAGE by a light margin — width is frozen.
+const OVERDRIVE_RANGE_PER_SEC := 240.0
+const OVERDRIVE_DAMAGE_PER_SEC := 4.0
+const OVERDRIVE_WIDTH_MULT := 1.6    # one-time width bump on entering overdrive
 var _charge_circle: ChargeCircle = null
 var _full_hold_time := 0.0           # time spent at 100% charge (visual stacks)
 var _overdrive_drain_accum := 0.0
@@ -696,6 +701,8 @@ func _fire_laser(charge_level: float, hold_time: float = 0.0) -> void:
 	var full_hold: float = maxf(hold_time - w.charge_time, 0.0) if charge_level >= 1.0 else 0.0
 	var stacks: int = mini(int(full_hold / STACK_INTERVAL), MAX_CHARGE_STACKS)
 	var overdrive: bool = hold_time >= OVERDRIVE_HOLD_TIME
+	# Seconds spent in overdrive — drives the unlimited range/damage growth
+	var overtime: float = maxf(hold_time - OVERDRIVE_HOLD_TIME, 0.0)
 
 	var mana_cost := lerpf(6.0, w.laser_mana_cost, charge_level)
 	if mana < mana_cost:
@@ -719,14 +726,17 @@ func _fire_laser(charge_level: float, hold_time: float = 0.0) -> void:
 			player_skin.scale.x = abs(player_skin.scale.x) * facing
 	_attack_aim = aim
 
-	# Charge-scaled damage / range / width; stacks boost damage, overdrive
-	# fattens the beam
+	# Charge-scaled damage / range / width. Stacks boost damage pre-overdrive;
+	# in overdrive the width is frozen while continued holding grows range
+	# (wide margin) and damage (light margin) with NO cap.
 	var dmg: int = int(lerpf(w.laser_min_damage, w.laser_max_damage, charge_level) \
 		* (1.0 + STACK_DAMAGE_BONUS * stacks)) + stat_atk
 	var beam_range := lerpf(w.laser_min_range, w.laser_max_range, charge_level)
 	var beam_width := lerpf(w.laser_min_width, w.laser_max_width, charge_level)
 	if overdrive:
-		beam_width *= 1.6
+		beam_width = lerpf(w.laser_min_width, w.laser_max_width, 1.0) * OVERDRIVE_WIDTH_MULT
+		beam_range += overtime * OVERDRIVE_RANGE_PER_SEC       # wide range gain
+		dmg += int(overtime * OVERDRIVE_DAMAGE_PER_SEC)        # light damage gain
 	var start := global_position + aim * 16.0 + Vector2(0, -8)
 
 	# Walls stop the beam; enemies do not (piercing)
@@ -753,19 +763,21 @@ func _fire_laser(charge_level: float, hold_time: float = 0.0) -> void:
 		excludes.append(hit.rid)
 		enemy_q.exclude = excludes
 
-	# Visuals + feel — overdrive gets the helix-wrapped beam and a harder kick
+	# Visuals + feel — overdrive gets the white helix-wrapped beam and a harder
+	# kick; the helix intensity grows with overtime (longer hold = fiercer)
 	if overdrive:
-		Fx.beam(start, end, beam_width, Color(0.95, 0.85, 1.0, 1.0), Color(0.7, 0.4, 1.0, 0.6), true, stacks)
+		var intensity := stacks + int(overtime)
+		Fx.beam(start, end, beam_width, Color(1.0, 1.0, 1.0, 1.0), Color(0.85, 0.9, 1.0, 0.6), true, intensity)
 	else:
 		Fx.beam(start, end, beam_width)
-	velocity -= aim * lerpf(40.0, 170.0, charge_level) * (1.5 if overdrive else 1.0)  # recoil
-	_screen_shake(lerpf(1.5, 6.0, charge_level) * (1.5 if overdrive else 1.0))
+	velocity -= aim * lerpf(40.0, 170.0, charge_level) * (1.6 if overdrive else 1.0)  # recoil
+	_screen_shake((lerpf(1.5, 6.0, charge_level) + overtime * 0.3) if overdrive else lerpf(1.5, 6.0, charge_level))
 
 	# Cast animation (staff_charged) drives the attack state/cooldown
 	is_attacking = true
 	hit_enemies_this_swing.clear()
 	current_attack_knockback = 0.0
-	attack_label.text = "OVERDRIVE BEAM" if overdrive else "ARCANE BEAM"
+	attack_label.text = ("OVERDRIVE BEAM  %dm" % int(beam_range / 64.0)) if overdrive else "ARCANE BEAM"
 	attack_label.visible = true
 	attack_text_timer = ATTACK_TEXT_TIME * 2
 	if player_skin and player_skin.has_method("play_uppercut"):
@@ -825,7 +837,12 @@ func _update_charge_telegraph(delta: float) -> void:
 		if player_skin and player_skin.has_method("play_aim_pose"):
 			player_skin.play_aim_pose()
 
-		# Charge orb at the staff muzzle
+		# Shared muzzle point — the orb sits at the CENTER of the mana circle so
+		# the two read as one integrated cast, not two stacked circles.
+		var muzzle := Vector2(facing * 30.0, -13.0)
+		var lvl: float = input_ctrl.charge_level
+
+		# Charge orb (the bright core inside the circle)
 		if _charge_orb == null or not is_instance_valid(_charge_orb):
 			_charge_orb = Polygon2D.new()
 			var pts := PackedVector2Array()
@@ -833,16 +850,16 @@ func _update_charge_telegraph(delta: float) -> void:
 				var t := TAU * float(i) / 14.0
 				pts.append(Vector2(cos(t), sin(t)) * 5.0)
 			_charge_orb.polygon = pts
-			_charge_orb.z_index = 60
+			_charge_orb.z_index = 62  # above the circle rings
 			add_child(_charge_orb)
-		var lvl: float = input_ctrl.charge_level
-		_charge_orb.position = Vector2(facing * 26.0, -12.0)
-		_charge_orb.scale = Vector2.ONE * lerpf(0.25, 1.7, lvl)
-		_charge_orb.color = Color(0.55 + 0.45 * lvl, 0.8, 1.0, 0.45 + 0.5 * lvl)
+		_charge_orb.position = muzzle
+		_charge_orb.scale = Vector2.ONE * lerpf(0.25, 1.5, lvl)
+		_charge_orb.color = Color(0.7 + 0.3 * lvl, 0.85, 1.0, 0.45 + 0.5 * lvl)
 		if lvl >= 1.0:
 			_charge_orb.scale *= 1.0 + 0.12 * sin(Time.get_ticks_msec() / 40.0)
 
-		# Mana circle once fully charged: brighter + more stacks over time
+		# Mana circle once fully charged: concentric with the orb, brighter +
+		# more stacks the longer the hold
 		if lvl >= 1.0:
 			_full_hold_time += delta
 			var stacks: int = mini(int(_full_hold_time / STACK_INTERVAL), MAX_CHARGE_STACKS)
@@ -851,10 +868,11 @@ func _update_charge_telegraph(delta: float) -> void:
 				_charge_circle = ChargeCircle.new()
 				_charge_circle.z_index = 61
 				add_child(_charge_circle)
-			_charge_circle.position = Vector2(facing * 46.0, -12.0)
+			_charge_circle.position = muzzle  # same point as the orb → integrated
 			_charge_circle.stacks = stacks
 			_charge_circle.brightness = clampf(_full_hold_time / OVERDRIVE_HOLD_TIME, 0.0, 1.0)
 			_charge_circle.overdrive = overdrive
+			_charge_circle.overtime = maxf(input_ctrl.charge_hold_time - OVERDRIVE_HOLD_TIME, 0.0)
 
 			# Overdrive: the hold itself starts eating mana
 			if overdrive:
@@ -882,7 +900,7 @@ func _break_charge_circle() -> void:
 	## lost, and NO beam fires. The button is dead until re-pressed.
 	if input_ctrl:
 		input_ctrl.cancel_charge()
-	Fx.circle_break(global_position + Vector2(facing * 46.0, -12.0))
+	Fx.circle_break(global_position + Vector2(facing * 30.0, -13.0))
 	_flash_skin(Color(0.5, 0.6, 1.3))
 	_screen_shake(2.5)
 	attack_label.text = "CIRCLE BROKEN"
@@ -891,53 +909,72 @@ func _break_charge_circle() -> void:
 	attack_cooldown_timer = maxf(attack_cooldown_timer, 0.6)  # fizzle recovery
 
 
-## Rotating rune ring shown in front of the charge orb at full charge.
-## Brightness/size grow with the hold; stack pips arc over the top; the
-## outer flare pulses hot in overdrive.
+## Rotating rune ring CONCENTRIC with the charge orb (shares its position).
+## Dynamic gradient: cyan when fresh, whitening as it charges; pure white in
+## overdrive. Rings/runes tighten around the orb; overtime grows the circle
+## and sheds orbiting motes. Stack pips arc over the top.
 class ChargeCircle:
 	extends Node2D
 	var stacks := 0
-	var brightness := 0.0  # 0..1 over the hold
+	var brightness := 0.0   # 0..1 over the hold to overdrive
 	var overdrive := false
+	var overtime := 0.0     # seconds past overdrive (unbounded)
 	var _t := 0.0
 
 	func _process(delta: float) -> void:
 		_t += delta
 		queue_redraw()
 
+	func _grad(edge: float) -> Color:
+		# Dynamic gradient cyan→white by charge; fully white in overdrive.
+		var w: float = clampf(brightness + (1.0 if overdrive else 0.0), 0.0, 1.0)
+		return Color(lerpf(0.55, 1.0, w), lerpf(0.85, 1.0, w), 1.0, edge)
+
 	func _draw() -> void:
-		var base := Color(0.6, 0.85, 1.0)
 		var a := 0.35 + 0.6 * brightness
-		var r := 13.0 + 1.6 * stacks
+		# Circle grows with stacks, and keeps widening slowly in overdrive
+		var r := 12.0 + 1.4 * stacks + minf(overtime, 12.0) * 0.6
+		var col := _grad(a)
 
-		# Outer + inner rings
-		draw_arc(Vector2.ZERO, r, 0, TAU, 40, Color(base, a), 2.0)
-		draw_arc(Vector2.ZERO, r * 0.62, 0, TAU, 32, Color(base, a * 0.7), 1.5)
+		# Concentric rings around the orb (outer, mid, inner)
+		draw_arc(Vector2.ZERO, r, 0, TAU, 44, col, 2.0)
+		draw_arc(Vector2.ZERO, r * 0.74, 0, TAU, 36, _grad(a * 0.8), 1.5)
+		draw_arc(Vector2.ZERO, r * 0.5, 0, TAU, 28, _grad(a * 0.6), 1.0)
 
-		# Rotating rune ticks (outer, clockwise)
-		for i in range(8):
-			var ang := _t * 1.6 + TAU * float(i) / 8.0
+		# Rotating rune ticks straddling the outer ring (clockwise)
+		var rune_count := 8 + int(minf(overtime, 8.0))
+		for i in range(rune_count):
+			var ang := _t * 1.6 + TAU * float(i) / float(rune_count)
 			var dir := Vector2(cos(ang), sin(ang))
-			draw_line(dir * (r - 3.0), dir * (r + 3.0), Color(base, a), 2.0)
-		# Counter-rotating inner motes
-		for i in range(4):
-			var ang2 := -_t * 2.4 + TAU * float(i) / 4.0
-			draw_circle(Vector2(cos(ang2), sin(ang2)) * r * 0.62, 1.8, Color(1, 1, 1, a))
+			draw_line(dir * (r - 3.0), dir * (r + 3.0), col, 2.0)
 
-		# Stack pips: diamonds arced over the top of the circle
+		# Counter-rotating inner motes hugging the orb
+		for i in range(6):
+			var ang2 := -_t * 2.4 + TAU * float(i) / 6.0
+			draw_circle(Vector2(cos(ang2), sin(ang2)) * r * 0.5, 1.7, Color(1, 1, 1, a))
+
+		# Orbiting particle motes in overdrive (further out, faster)
+		if overdrive:
+			var moccount := 6 + int(minf(overtime, 10.0))
+			for i in range(moccount):
+				var ang3 := _t * 3.2 + TAU * float(i) / float(moccount)
+				var rr := r + 5.0 + 2.0 * sin(_t * 4.0 + i)
+				draw_circle(Vector2(cos(ang3), sin(ang3)) * rr, 1.4, Color(1, 1, 1, 0.6 + 0.3 * sin(_t * 6.0 + i)))
+
+		# Stack pips: diamonds arced over the top
 		for i in range(stacks):
 			var pip_ang := -PI / 2.0 + (float(i) - (stacks - 1) / 2.0) * 0.42
 			var c := Vector2(cos(pip_ang), sin(pip_ang)) * (r + 7.0)
 			var pip := PackedVector2Array([
 				c + Vector2(0, -2.6), c + Vector2(2.2, 0), c + Vector2(0, 2.6), c + Vector2(-2.2, 0),
 			])
-			draw_colored_polygon(pip, Color(1.0, 0.95, 0.6, 0.6 + 0.4 * brightness))
+			draw_colored_polygon(pip, Color(1.0, 1.0, 0.85, 0.6 + 0.4 * brightness))
 
-		# Overdrive: hot pulsing flare ring
+		# Overdrive: bright WHITE pulsing flare ring (was purple)
 		if overdrive:
 			var pulse := 0.5 + 0.5 * sin(_t * 7.0)
-			draw_arc(Vector2.ZERO, r + 4.0 + 2.5 * pulse, 0, TAU, 40,
-				Color(1.0, 0.55, 0.9, 0.35 + 0.35 * pulse), 2.5)
+			draw_arc(Vector2.ZERO, r + 4.0 + 2.5 * pulse, 0, TAU, 44,
+				Color(1.0, 1.0, 1.0, 0.4 + 0.4 * pulse), 2.5)
 
 
 # ─── Character customization ─────────────────────────────────────────────────
