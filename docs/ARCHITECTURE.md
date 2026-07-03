@@ -108,15 +108,18 @@ keyboard / mouse (InputMap) ────┴─► PlayerInput ─► signals ─
 
 - **Signals:** `move_changed(Vector2)`, `jump_pressed`, `dodge_pressed`,
   `parry_pressed`, `interact_pressed`, `attack_pressed`,
-  `attack_released(charge_level: float)`, `inventory_toggle_pressed`,
-  `profile_toggle_pressed`.
+  `attack_released(charge_level: float, hold_time: float)`,
+  `inventory_toggle_pressed`, `profile_toggle_pressed`.
 - **Modes:** `TOUCH` (default) ↔ `KBM`. A physical key press → KBM (touch buttons
   hide); a REAL screen touch (`event.device != InputEvent.DEVICE_ID_EMULATION`)
   → TOUCH. In TOUCH mode mouse buttons stay emulated-touch (prevents ring
   double-fire); `_mouse_gated()` enforces this.
 - **Continuous charge:** PlayerInput owns `charge_level` 0..1, driven by
   `charge_time` (set from the equipped weapon on every equip). The ring is a
-  dumb display (`set_charge(level)`). Release emits `attack_released(level)`.
+  dumb display (`set_charge(level)`). The hold is INDEFINITE —
+  `charge_hold_time` keeps counting past full; release emits
+  `attack_released(level, hold_time)`. `cancel_charge()` kills a hold without
+  firing (mana circle break) — the held button stays dead until re-pressed.
 - **Aim:** `get_aim_vector()` → mouse direction (KBM) or joystick direction
   (TOUCH); ZERO means "no aim, use facing".
 - Esc toggles the pause menu directly (PlayerInput is `PROCESS_MODE_ALWAYS`);
@@ -128,12 +131,22 @@ keyboard / mouse (InputMap) ────┴─► PlayerInput ─► signals ─
 
 **Attack dispatch on release** (`playercontroller._on_attack_released`):
 ```
-charged_style == "laser" and level >= 0.15  → _fire_laser(level)
+charged_style == "laser" and level >= 0.15  → _fire_laser(level, hold_time)
 level >= 1.0                                → _on_attack_charged()
    charged_style == "heal" → _perform_heal()
    else                    → charged melee/ranged (play_uppercut → charged_anim)
 else                                        → _on_attack_button_pressed() (normal)
 ```
+
+**Laser hold mechanics** (`playercontroller`): while charging a laser weapon
+the player locks into the `staff_aim` rifle stance (`_laser_stance_active()`
+gates locomotion + turns with the aim). At full charge a `ChargeCircle`
+(inner class — rotating rune ring) appears ahead of the orb, brightening and
+gaining stacks (1 per `STACK_INTERVAL`=2s, max 5, +8% damage each). Past
+`OVERDRIVE_HOLD_TIME`=10s the hold drains `OVERDRIVE_MANA_DRAIN`=8 mana/s;
+firing in overdrive = 1.6× width + helix beam (`Fx.beam(..., helix, stacks)`).
+If mana hits 0 mid-hold → `_break_charge_circle()`: `Fx.circle_break`,
+fizzle cooldown, charge cancelled, **no beam** (no auto-fire by design).
 
 ---
 
