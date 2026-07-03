@@ -88,6 +88,12 @@ var _attack_aim := Vector2.RIGHT     # aim captured when the attack starts
 var _charged_shot := false           # bow: charged release fires a heavier arrow
 var _charge_orb: Polygon2D = null    # growing laser-charge telegraph on the staff
 
+# Grabbed / thrown state (boss grab-and-throw)
+var is_grabbed := false
+var _grabber: Node2D = null
+var _thrown := false                 # airborne after a throw — landing hurts
+var _throw_landing_damage := 0
+
 # Mana regeneration
 const MANA_REGEN_RATE := 4.0  # per second
 var mana_regen_accum := 0.0
@@ -343,6 +349,26 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0, SPEED * delta * 4.0)
 		move_and_slide()
 		return
+
+	# Grabbed: the grabber owns our position until we're thrown
+	if is_grabbed:
+		velocity = Vector2.ZERO
+		if _grabber == null or not is_instance_valid(_grabber):
+			is_grabbed = false
+		return
+
+	# Thrown: landing hurts (airtime damage of the boss grab-and-throw)
+	if _thrown and is_on_floor():
+		_thrown = false
+		if _throw_landing_damage > 0 and not is_dead:
+			health -= _throw_landing_damage
+			Fx.damage_number(global_position, _throw_landing_damage, Fx.PLAYER_DAMAGE_COLOR)
+			Fx.hit_particles(global_position + Vector2(0, 20), Color(0.8, 0.5, 0.3))
+			_flash_skin(Color(1, 0.25, 0.25))
+			_screen_shake(4.0)
+			update_bars()
+			if health <= 0:
+				die()
 
 	stamina_regen_paused = false
 
@@ -840,6 +866,50 @@ func take_damage(amount: int, source_pos: Vector2, knockback: Vector2 = Vector2.
 	if health <= 0:
 		die()
 	return true
+
+
+# ─── Grab-and-throw (boss) ───────────────────────────────────────────────────
+
+func begin_grabbed(grabber: Node2D) -> void:
+	## Seized by a boss grab: control is suspended; the grabber moves us.
+	is_grabbed = true
+	_grabber = grabber
+	is_attacking = false
+	is_rolling = false
+	is_parrying = false
+	velocity = Vector2.ZERO
+	if player_skin and player_skin.has_method("_disable_hitbox"):
+		player_skin._disable_hitbox()
+	if player_skin and player_skin.has_method("play_hurt"):
+		player_skin.play_hurt()
+
+
+func update_grabbed(pos: Vector2) -> void:
+	if is_grabbed:
+		global_position = pos
+
+
+func launch_thrown(vel: Vector2, impact_damage: int, landing_damage: int, _source_pos: Vector2 = Vector2.ZERO) -> void:
+	## Thrown by the grabber: impact damage now, landing damage on touchdown,
+	## control disabled for the airtime.
+	is_grabbed = false
+	_grabber = null
+	_thrown = true
+	_throw_landing_damage = landing_damage
+	# Impact damage bypasses i-frames (you were caught) but not death checks
+	var mitigated: int = maxi(impact_damage - (defense + stat_def), 1)
+	health -= mitigated
+	Fx.damage_number(global_position, mitigated, Fx.PLAYER_DAMAGE_COLOR)
+	_flash_skin(Color(1, 0.25, 0.25))
+	velocity = vel
+	is_hurt = true
+	hurt_timer = 0.6  # control locked through the arc
+	invuln_timer = maxf(invuln_timer, 0.4)
+	update_bars()
+	if player_skin and player_skin.has_method("play_hurt"):
+		player_skin.play_hurt()
+	if health <= 0:
+		die()
 
 
 func _try_parry(source_pos: Vector2, attacker: Node) -> bool:
