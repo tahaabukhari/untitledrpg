@@ -266,24 +266,34 @@ items/
 
 ## 5. Migration Path (incremental, each step ships green)
 
-1. **Registry first (non-breaking).** Add `ItemDB` autoload + `id` on `WeaponData`;
-   route the 3 hardcoded-path sites through it. Unlocks save/load later. *No
-   behavior change.*
-2. **Extract player "verbs".** Pull `_fire_laser`/`_perform_heal`/`fire_projectile`
-   bodies into small reusable methods that take params (they mostly are already).
-3. **Introduce `WeaponBehavior`** (Option A). Port the 4 existing behaviors into
-   subclasses that call the verbs. Replace the `charged_style` branches with
-   `behavior.on_charge_release(...)`. Keep `charged_style` as a deprecated shim
-   for one release.
-4. **Sub-resource tuning.** Move laser/heal flat fields into `LaserTuning`/
-   `HealTuning`; migrate the 6 `.tres`.
-5. **Namespace animations** per weapon id.
-6. **`ItemData` hierarchy + armor/consumables.** Now the inventory slots that
-   already exist become functional; `_can_drop_data` gates by kind.
-7. **Modifier/rarity layer** (when a loot system is actually needed).
+1. ✅ **DONE** (`ItemDB` step). **Registry first (non-breaking).** `ItemDB`
+   autoload (`autoload/item_db.gd`) + `id` on `WeaponData`; the 3 hardcoded-path
+   sites (`Global.class_starter_weapon`, inventory seeding, apply_class) route
+   through it. `test_itemdb.gd`. *No behavior change.*
+2. ✅ **DONE** (folded into 3). **Player "verbs" exposed** — `do_normal_attack`,
+   `do_charged_melee`, `fire_laser_beam`, `channel_heal`, `fire_projectile` are
+   now public methods behaviors call.
+3. ✅ **DONE** (behavior step). **`WeaponBehavior` plugins** in
+   `weapons/behaviors/` (base = plain melee, `laser_behavior`, `heal_behavior`).
+   `WeaponData.get_behavior()` — explicit `behavior_script` wins, else derived
+   from `charged_style` (kept as fallback selector). All 3 `charged_style`
+   branches removed from `playercontroller` → `_behavior.on_release()` /
+   `wants_charge_stance()`. `test_behavior.gd`. **Adding an attack kind no longer
+   touches the player.**
+4. ⬜ **TODO. Sub-resource tuning.** Move laser/heal flat fields into
+   `LaserTuning`/`HealTuning`; migrate the 6 `.tres`. (R2)
+5. ⬜ **TODO. Namespace animations** per weapon id. (R3)
+6. ⬜ **TODO. `ItemData` hierarchy + armor/consumables.** Makes the existing
+   inventory slots functional; `_can_drop_data` gates by kind. **Blocked on the
+   flyweight-vs-instance decision (§8).** (R4)
+7. ⬜ **TODO. Modifier/rarity layer** (when a loot system is actually needed). (R7)
+
+> **Current default (revisit at step 6):** items are **flyweight** — `ItemDB`
+> returns shared resource instances. Per-item state (durability/affixes) would
+> layer on top via an instance wrapper without reworking the registry.
 
 Each step is independently testable with the existing headless harness
-(`tests/test_*.gd`); add a `test_itemdb.gd` and `test_behavior_dispatch.gd`.
+(`tests/test_*.gd`): `test_itemdb.gd` and `test_behavior.gd` cover 1–3.
 
 ---
 

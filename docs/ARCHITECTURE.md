@@ -18,7 +18,7 @@
 | Language | GDScript only, typed where practical |
 | Viewport | 1440×640, `stretch/mode="viewport"`, `emulate_touch_from_mouse=true` |
 | Main scene | `res://titlescreen.tscn` |
-| Autoloads | `Global` (`res://global.gd`), `Fx` (`res://autoload/fx.gd`) |
+| Autoloads | `Global` (`res://global.gd`), `Fx` (`res://autoload/fx.gd`), `ItemDB` (`res://autoload/item_db.gd`) |
 | Genre | 2D side-scrolling action RPG (Soul-Knight-ish combat feel) |
 | Targets | Android touch-first; full keyboard/mouse PC support |
 | Test harness | `tests/test_phase1..8.gd`, `tests/test_ui.gd` — headless SceneTree scripts |
@@ -59,7 +59,9 @@ titlescreen.tscn ──START GAME──► class_selection.tscn ──► DemoMa
 ### Weapons
 | File | Role |
 |---|---|
-| `weapon_data.gd` | `class_name WeaponData` (Resource). Stats + behavior switches: `attack_style` ("melee"/"ranged"), `charged_style` ("melee"/"laser"/"heal"), laser tuning block, heal block, `combo_anims`, `animator_script`. |
+| `weapon_data.gd` | `class_name WeaponData` (Resource). `id` (catalog key), stats, `combo_anims`, `animator_script` (visuals), `behavior_script` (charged-attack plugin) + `get_behavior()`; `charged_style`/`attack_style` kept as fallback selectors. |
+| `autoload/item_db.gd` | `ItemDB` autoload — scans `res://weapons/`, maps `id`→resource. `get_item/has_item/all_of_kind/all_ids`. All item discovery routes here (see WEAPON_ITEM_ARCHITECTURE.md). |
+| `weapons/behaviors/*.gd` | `WeaponBehavior` (base = melee) + `laser_behavior`, `heal_behavior`. Own charged-attack dispatch (`on_release`, `wants_charge_stance`); the player forwards charge events here instead of branching on a style enum. |
 | `weapons/animators/weapon_animator.gd` | `class_name WeaponAnimator` (RefCounted) — plugin base. Contract: `setup_visual`, `get_attack_animations`, `get_hold_positions`, `teardown_visual`. **Also hosts `static make_directional_swing(pivots, angle, opts)`** — THE shared angle-parameterized swing builder used by player, mannequin, and boss (see §6). Static track helpers `anim_pos/rot/zidx/method`. |
 | `weapons/animators/fists_animator.gd` | Default/unequip fallback. `attack_right/left`, `uppercut`. |
 | `weapons/animators/sword_animator.gd` | Warrior. 3-hit combo + charged thrust (`_trigger_thrust_dash`). |
