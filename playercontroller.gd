@@ -70,6 +70,7 @@ const LONG_FALL_THRESHOLD := 2.0  # seconds before switching to long_fall anim
 
 # Combat — driven by equipped weapon
 @export var equipped_weapon: WeaponData = preload("res://weapons/weapon_fists.tres")
+var _behavior: WeaponBehavior = null   # charged-attack plugin for equipped_weapon
 var is_attacking := false
 var attack_cooldown_timer := 0.0
 var hit_enemies_this_swing: Array = []
@@ -308,15 +309,15 @@ func _on_parry_pressed() -> void:
 func _on_attack_released(charge_level: float, hold_time: float = 0.0) -> void:
 	if _gameplay_blocked():
 		return
-	# Laser weapons: any meaningful hold fires a charge-scaled beam;
-	# a bare tap stays a normal melee poke.
-	if equipped_weapon.charged_style == "laser" and charge_level >= 0.15:
-		_fire_laser(charge_level, hold_time)
-		return
-	if charge_level >= 1.0:
-		_on_attack_charged()
-	else:
-		_on_attack_button_pressed()
+	# The equipped weapon's behavior plugin owns the release decision
+	# (charged beam / heal / melee vs. a normal tap).
+	_ensure_behavior().on_release(self, charge_level, hold_time)
+
+
+func _ensure_behavior() -> WeaponBehavior:
+	if _behavior == null:
+		_behavior = equipped_weapon.get_behavior()
+	return _behavior
 
 
 func _gameplay_blocked() -> bool:
@@ -611,7 +612,7 @@ func get_wall_push_direction() -> int:
 			return int(normal.x)
 	return 0
 
-func _on_attack_button_pressed() -> void:
+func do_normal_attack() -> void:
 	if is_attacking or attack_cooldown_timer > 0.0 or is_rolling or is_parrying:
 		return
 	if equipped_weapon.stamina_cost > 0 and stamina < equipped_weapon.stamina_cost:
@@ -643,12 +644,8 @@ func _on_attack_button_pressed() -> void:
 		player_skin.play_attack(aim)
 
 
-func _on_attack_charged() -> void:
+func do_charged_melee() -> void:
 	if is_attacking or is_rolling or is_parrying:
-		return
-	# Healers channel a blessing instead of a heavy swing
-	if equipped_weapon.charged_style == "heal":
-		_perform_heal()
 		return
 	if stamina < equipped_weapon.charged_stamina_cost:
 		return  # not enough stamina
@@ -686,7 +683,7 @@ func fire_projectile(charged: bool = false) -> void:
 		arrow.modulate = Color(1.2, 1.1, 0.8)
 
 
-func _fire_laser(charge_level: float, hold_time: float = 0.0) -> void:
+func fire_laser_beam(charge_level: float, hold_time: float = 0.0) -> void:
 	## SHOWCASE: charge-scaled piercing hitscan beam along the 8-dir aim.
 	## Long holds build mana-circle stacks (bonus damage); holds past
 	## OVERDRIVE_HOLD_TIME fire a wider helix-wrapped overdrive beam.
@@ -782,7 +779,7 @@ func _fire_laser(charge_level: float, hold_time: float = 0.0) -> void:
 		player_skin.play_uppercut()
 
 
-func _perform_heal() -> void:
+func channel_heal() -> void:
 	## Healer charged action: spend mana, restore HP, green channel visuals.
 	if mana < equipped_weapon.heal_mana_cost:
 		attack_label.text = "NO MANA"
@@ -816,7 +813,7 @@ func _screen_shake(amplitude: float) -> void:
 func _laser_stance_active() -> bool:
 	## True while holding a laser charge — locks the aim battle stance.
 	return input_ctrl != null and input_ctrl.is_charging \
-		and equipped_weapon.charged_style == "laser" \
+		and _ensure_behavior().wants_charge_stance() \
 		and not is_attacking and not is_dead and not is_rolling
 
 
@@ -1031,6 +1028,7 @@ const DEFAULT_WEAPON: WeaponData = preload("res://weapons/weapon_fists.tres")
 
 func _on_weapon_equipped(weapon: WeaponData) -> void:
 	equipped_weapon = weapon
+	_behavior = weapon.get_behavior()
 	if input_ctrl:
 		input_ctrl.charge_time = weapon.charge_time
 	if player_skin and player_skin.has_method("equip_weapon_visual"):
@@ -1038,6 +1036,7 @@ func _on_weapon_equipped(weapon: WeaponData) -> void:
 
 func _on_weapon_unequipped() -> void:
 	equipped_weapon = DEFAULT_WEAPON
+	_behavior = DEFAULT_WEAPON.get_behavior()
 	if input_ctrl:
 		input_ctrl.charge_time = DEFAULT_WEAPON.charge_time
 	if player_skin and player_skin.has_method("unequip_weapon_visual"):

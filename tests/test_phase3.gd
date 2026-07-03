@@ -62,7 +62,7 @@ func _run() -> void:
 	_check("hit during roll ignored", not applied and player.health == hp0)
 
 	# Cannot attack mid-roll
-	player._on_attack_button_pressed()
+	player.do_normal_attack()
 	_check("cannot attack mid-roll", not player.is_attacking)
 
 	await _wait_frames(30)

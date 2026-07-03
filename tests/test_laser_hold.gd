@@ -131,14 +131,14 @@ func _run() -> void:
 	# 11s hold → overtime 1s → range ≈ 950 + 240 = 1190 (short of 1600)
 	player.mana = player.max_mana
 	var far_hp0: int = far.hp
-	player._fire_laser(1.0, 11.0)
+	player.fire_laser_beam(1.0, 11.0)
 	await _wait_frames(5)
 	_check("short-overdrive beam falls short of the far target", far.hp == far_hp0)
 	player.is_attacking = false
 	player.attack_cooldown_timer = 0.0
 	# 25s hold → overtime 15s → range ≈ 950 + 3600 = 4550 (reaches 1600)
 	player.mana = player.max_mana
-	player._fire_laser(1.0, 25.0)
+	player.fire_laser_beam(1.0, 25.0)
 	await _wait_frames(5)
 	_check("long-overdrive beam reaches far target (range grows unbounded)", far.hp < far_hp0)
 	far.queue_free()

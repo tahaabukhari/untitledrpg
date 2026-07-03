@@ -23,6 +23,11 @@ class_name WeaponData
 @export var projectile_speed: float = 700.0  # ranged only
 
 @export_group("Charged Attack")
+## Optional explicit behavior plugin (a WeaponBehavior subclass). When set it
+## wins over charged_style — this is how new attack kinds are added without
+## touching the player. Leave null to derive the behavior from charged_style.
+@export var behavior_script: GDScript
+## Legacy selector kept as a fallback when behavior_script is null:
 ## "melee" = charged swing anim; "laser" = charge-scaled hitscan beam;
 ## "heal" = channel that restores HP for mana.
 @export_enum("melee", "laser", "heal") var charged_style: String = "melee"
@@ -52,6 +57,25 @@ class_name WeaponData
 @export var charged_anim: String = "uppercut"
 ## Combo sequence — if non-empty, overrides attack_right/left with an ordered combo chain.
 @export var combo_anims: Array[String] = []
+
+
+const _MELEE_BEHAVIOR := preload("res://weapons/behaviors/weapon_behavior.gd")
+const _LASER_BEHAVIOR := preload("res://weapons/behaviors/laser_behavior.gd")
+const _HEAL_BEHAVIOR := preload("res://weapons/behaviors/heal_behavior.gd")
+
+
+## Instantiate this weapon's charged-attack behavior plugin. Explicit
+## behavior_script wins; otherwise derive from the legacy charged_style.
+func get_behavior() -> WeaponBehavior:
+	if behavior_script:
+		return behavior_script.new()
+	match charged_style:
+		"laser":
+			return _LASER_BEHAVIOR.new()
+		"heal":
+			return _HEAL_BEHAVIOR.new()
+		_:
+			return _MELEE_BEHAVIOR.new()
 
 
 ## Calculate a random normal attack damage, factoring in the player's ATK stat bonus.

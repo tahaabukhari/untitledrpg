@@ -65,7 +65,7 @@ func _run() -> void:
 	var mana0: float = player.mana
 	var hp_near0: int = mann.hp
 	var hp_far0: int = mann_far.hp
-	player._fire_laser(0.2)
+	player.fire_laser_beam(0.2)
 	await _wait_frames(5)
 	_check("low-charge laser costs mana", player.mana < mana0)
 	_check("low-charge beam hits nothing beyond its short range",
@@ -78,7 +78,7 @@ func _run() -> void:
 	var mana1: float = player.mana
 	hp_near0 = mann.hp
 	hp_far0 = mann_far.hp
-	player._fire_laser(1.0)
+	player.fire_laser_beam(1.0)
 	await _wait_frames(5)
 	var near_dmg: int = hp_near0 - mann.hp
 	var far_dmg: int = hp_far0 - mann_far.hp
@@ -102,7 +102,7 @@ func _run() -> void:
 	player.get_node("PlayerInput").mode = 0  # TOUCH → joystick aim
 	var joystick: Control = player.get_node("TouchControls/JOYSTICK")
 	joystick.last_vector = Vector2(0, -1)
-	player._fire_laser(1.0)
+	player.fire_laser_beam(1.0)
 	await _wait_frames(5)
 	_check("upward beam hits the overhead dummy", mann_up.hp < hp_up0)
 	joystick.last_vector = Vector2.ZERO
@@ -113,7 +113,7 @@ func _run() -> void:
 	player.attack_cooldown_timer = 0.0
 	player.mana = 0
 	hp_near0 = mann.hp
-	player._fire_laser(1.0)
+	player.fire_laser_beam(1.0)
 	await _wait_frames(3)
 	_check("insufficient mana blocks the beam", mann.hp == hp_near0)
 
@@ -135,7 +135,7 @@ func _run() -> void:
 	player.health = 40
 	player.mana = player.max_mana
 	var mana2: float = player.mana
-	player._perform_heal()
+	player.channel_heal()
 	_check("heal restores HP", player.health == 40 + w_wand.heal_amount)
 	_check("heal costs mana", player.mana < mana2)
 
