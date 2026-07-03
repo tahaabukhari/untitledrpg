@@ -1,5 +1,10 @@
 # COMBAT UPDATE — Directional Dodge · Tripping · Mirror Monster · Blood
 
+> **STATUS: BUILT** (commit `c95d899`) to the §7.5 locked decisions.
+> `tests/test_dodge_trip.gd` (17) + `tests/test_mirror.gd` (13) green; full
+> suite green. Spawn the Mirror in the arena with the **M** key. Only the §2c
+> "feel" polish (hitstop / perfect-dodge reward) is deferred.
+
 > **Design/context doc — written BEFORE implementation** (per request). Grounds
 > the feature in the current code, proposes concrete mechanics + numbers, and
 > lays out a build order. Anything marked **[PROPOSAL]** is a default I picked to
