@@ -107,8 +107,8 @@ func clear_item() -> void:
 func _update_icon() -> void:
 	if not icon_rect:
 		return
-	if item and item.def and item.def.weapon_icon:
-		icon_rect.texture = item.def.weapon_icon
+	if item and item.def and item.def.get_icon():
+		icon_rect.texture = item.def.get_icon()
 		icon_rect.visible = true
 		if type_label:
 			type_label.visible = false
@@ -127,7 +127,7 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 
 	# Create drag preview
 	var preview = TextureRect.new()
-	preview.texture = item.def.weapon_icon if item.def else null
+	preview.texture = item.def.get_icon() if item.def else null
 	preview.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

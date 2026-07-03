@@ -115,6 +115,11 @@ func _make_bow_shot(pivots: Dictionary, charged: bool) -> Animation:
 	return a
 
 
+func make_icon() -> Texture2D:
+	## Inventory icon for the icon-less bow (see WeaponData.get_icon).
+	return _make_bow_texture()
+
+
 static func _make_bow_texture() -> Texture2D:
 	## Code-drawn 24x24 bow: wooden arc + taut string.
 	var img := Image.create(24, 24, false, Image.FORMAT_RGBA8)

@@ -801,6 +801,81 @@ func channel_heal() -> void:
 		player_skin.play_uppercut()  # plays the weapon's charged_anim (wand_heal)
 
 
+# ─── Prayer (healer's empty-handed default) ──────────────────────────────────
+
+const PRAYER_LIGHTNING_ODDS := 7       # 1-in-7 prayers are answered
+const PRAYER_TARGET_RANGE := 520.0     # nearest enemy within this gets struck
+const PRAYER_AOE_RADIUS := 90.0        # light splash around the bolt
+const PRAYER_AOE_FRACTION := 0.35      # AoE damage = bolt damage × this
+
+func perform_prayer() -> void:
+	## Rub hands together in prayer. The 1/7 lightning roll happens at the
+	## animation's climax (prayer_rub method track → on_prayer_completed).
+	if is_attacking or attack_cooldown_timer > 0.0 or is_rolling or is_parrying:
+		return
+	stamina_regen_paused = true
+	saturation = max(saturation - SAT_ACTION_COST, 0.0)
+	is_attacking = true
+	hit_enemies_this_swing.clear()
+	current_attack_knockback = 0.0
+	attack_label.text = "PRAYER"
+	attack_label.visible = true
+	attack_text_timer = ATTACK_TEXT_TIME
+	if player_skin and player_skin.has_method("play_named_attack"):
+		player_skin.play_named_attack("prayer_rub")
+
+
+func on_prayer_completed() -> void:
+	## Fired by the prayer_rub animation. Every prayer sparkles; one in seven
+	## is ANSWERED — lightning on the closest nearby enemy.
+	Fx.prayer_sparkle(global_position + Vector2(facing * 8, -22))
+	if randi_range(1, PRAYER_LIGHTNING_ODDS) != 1:
+		return
+	var target := _closest_enemy(PRAYER_TARGET_RANGE)
+	if target == null:
+		return  # answered, but no sinner in sight
+	_summon_prayer_lightning(target)
+
+
+func _summon_prayer_lightning(target: Node2D) -> void:
+	## Divine bolt: full damage on the target, light AoE splash around the
+	## explosion, burning embers linger (visuals in Fx.lightning_strike).
+	var strike_pos := target.global_position
+	var bolt_damage: int = equipped_weapon.charged_damage + stat_atk
+	var aoe_damage: int = maxi(int(bolt_damage * PRAYER_AOE_FRACTION), 1)
+
+	Fx.lightning_strike(strike_pos, PRAYER_AOE_RADIUS)
+	_screen_shake(4.5)
+	attack_label.text = "ANSWERED!"
+	attack_label.visible = true
+	attack_text_timer = ATTACK_TEXT_TIME * 2
+
+	if target.has_method("take_damage"):
+		target.take_damage(bolt_damage, Vector2(0, -180))
+	# Light AoE on everything else near the blast
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if enemy == target or not is_instance_valid(enemy) or not enemy is Node2D:
+			continue
+		if enemy.global_position.distance_to(strike_pos) <= PRAYER_AOE_RADIUS \
+				and enemy.has_method("take_damage"):
+			enemy.take_damage(aoe_damage, (enemy.global_position - strike_pos).normalized() * 140.0)
+
+
+func _closest_enemy(max_range: float) -> Node2D:
+	var best: Node2D = null
+	var best_dist := max_range
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(enemy) or not enemy is Node2D:
+			continue
+		if enemy.get("is_dead"):
+			continue
+		var dist: float = global_position.distance_to(enemy.global_position)
+		if dist <= best_dist:
+			best_dist = dist
+			best = enemy
+	return best
+
+
 func _screen_shake(amplitude: float) -> void:
 	if not camera:
 		return

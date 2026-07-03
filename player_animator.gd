@@ -342,6 +342,21 @@ func play_aim_pose() -> void:
 		anim_player.play("staff_aim")
 
 
+func play_named_attack(anim_name: String) -> void:
+	## Play a specific weapon-registered attack animation (bypasses the combo/
+	## aim pipeline — e.g. the healer's prayer_rub). Emits attack_finished when
+	## done, same as play_attack/play_uppercut.
+	if not anim_player.has_animation(anim_name):
+		# Unknown anim: end the attack immediately so is_attacking never sticks
+		attack_finished.emit()
+		return
+	current_state = anim_name
+	anim_player.play(anim_name)
+	anim_player.seek(0.0, true)
+	if not anim_player.animation_finished.is_connected(_on_attack_done):
+		anim_player.animation_finished.connect(_on_attack_done, CONNECT_ONE_SHOT)
+
+
 func play_death() -> void:
 	current_state = "death"
 	if anim_player.has_animation("death"):
@@ -1023,6 +1038,13 @@ func _fire_projectile(charged: bool = false) -> void:
 	var player_node = get_parent()
 	if player_node and player_node.has_method("fire_projectile"):
 		player_node.fire_projectile(charged)
+
+
+func _trigger_prayer_effect() -> void:
+	## Called by the healer's prayer_rub method track at the rub's climax.
+	var player_node = get_parent()
+	if player_node and player_node.has_method("on_prayer_completed"):
+		player_node.on_prayer_completed()
 
 
 # ─── Track Helpers ───────────────────────────────────────────────────────────

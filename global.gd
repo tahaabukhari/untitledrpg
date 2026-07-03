@@ -81,7 +81,7 @@ var class_starter_weapon: Dictionary = {
 	"Warrior": &"starter_sword",
 	"Ranger": &"ranger_bow",
 	"Mage": &"starter_staff",
-	"Healer": &"healer_wand",
+	"Healer": &"healer_prayer",  # empty-handed prayer; the wand rides in inventory
 }
 
 

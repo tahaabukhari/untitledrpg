@@ -321,8 +321,8 @@ func _show_weapon_preview_card(inst: ItemInstance, source_slot: Control) -> void
 	var icon_center = CenterContainer.new()
 	vbox.add_child(icon_center)
 	var icon_rect = TextureRect.new()
-	if weapon.weapon_icon:
-		icon_rect.texture = weapon.weapon_icon
+	if weapon.get_icon():
+		icon_rect.texture = weapon.get_icon()
 	icon_rect.custom_minimum_size = Vector2(64, 64)
 	icon_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -508,6 +508,11 @@ func _add_starting_items() -> void:
 			var sword = ItemDB.make_instance(&"starter_sword")
 			if sword:
 				add_item(sword)
+		"Healer":
+			# Healer prays bare-handed by default; the healing wand is carried
+			var wand = ItemDB.make_instance(&"healer_wand")
+			if wand:
+				add_item(wand)
 		_:
 			pass  # Other classes: no starting weapon (fists)
 

@@ -280,6 +280,158 @@ func _beam_helix(start: Vector2, end: Vector2, width: float,
 				m.queue_free())
 
 
+# ─── Prayer sparkle (healer hand-rub feedback) ───────────────────────────────
+
+func prayer_sparkle(pos: Vector2) -> void:
+	## Soft golden motes drifting up from clasped hands — every prayer gets
+	## this; the lightning is the 1-in-7 jackpot on top.
+	for i in range(6):
+		var p := ColorRect.new()
+		p.size = Vector2(2, 2)
+		p.color = Color(1.0, 0.95, 0.6, randf_range(0.6, 0.95))
+		p.z_index = 105
+		add_child(p)
+		p.global_position = pos + Vector2(randf_range(-7, 7), randf_range(-4, 4))
+		var tw := p.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(p, "global_position:y", p.global_position.y - randf_range(14, 26), 0.5).set_ease(Tween.EASE_OUT)
+		tw.tween_property(p, "modulate:a", 0.0, 0.5)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(p):
+				p.queue_free())
+
+
+# ─── Lightning strike (healer prayer answered) ──────────────────────────────
+
+func lightning_strike(pos: Vector2, aoe_radius: float = 90.0) -> void:
+	## Divine bolt from above: jagged white core + glow crashing onto `pos`,
+	## sky flash, expanding explosion ring, radial sparks, and lingering
+	## BURNING embers. Flashy and strong — it should feel like a jackpot.
+	var top := pos + Vector2(randf_range(-30, 30), -420.0)
+
+	# Jagged bolt path (main) — segments jitter sideways on the way down
+	var points := PackedVector2Array()
+	var seg_count := 7
+	for i in range(seg_count + 1):
+		var t := float(i) / float(seg_count)
+		var p := top.lerp(pos, t)
+		if i > 0 and i < seg_count:
+			p.x += randf_range(-26.0, 26.0) * (1.0 - t * 0.5)
+		points.append(p - pos)  # local to the strike point
+
+	for pass_data in [[10.0, Color(0.75, 0.85, 1.0, 0.45), 106], [4.0, Color(1, 1, 1, 1.0), 107]]:
+		var bolt := Line2D.new()
+		bolt.width = pass_data[0]
+		bolt.default_color = pass_data[1]
+		bolt.z_index = pass_data[2]
+		bolt.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		bolt.end_cap_mode = Line2D.LINE_CAP_ROUND
+		bolt.points = points
+		add_child(bolt)
+		bolt.global_position = pos
+		var twb := bolt.create_tween()
+		twb.set_parallel(true)
+		twb.tween_property(bolt, "width", 0.0, 0.22).set_ease(Tween.EASE_IN)
+		twb.tween_property(bolt, "modulate:a", 0.0, 0.25)
+		twb.chain().tween_callback(func() -> void:
+			if is_instance_valid(bolt):
+				bolt.queue_free())
+
+	# Thin secondary fork for extra crackle
+	var fork := Line2D.new()
+	fork.width = 2.0
+	fork.default_color = Color(0.9, 0.95, 1.0, 0.9)
+	fork.z_index = 107
+	var fork_start: Vector2 = points[3]
+	var fork_dir := signf(randf_range(-1, 1))
+	fork.add_point(fork_start)
+	fork.add_point(fork_start + Vector2(fork_dir * 22, 26))
+	fork.add_point(fork_start + Vector2(fork_dir * 34, 55))
+	add_child(fork)
+	fork.global_position = pos
+	var twf := fork.create_tween()
+	twf.set_parallel(true)
+	twf.tween_property(fork, "width", 0.0, 0.16)
+	twf.tween_property(fork, "modulate:a", 0.0, 0.18)
+	twf.chain().tween_callback(func() -> void:
+		if is_instance_valid(fork):
+			fork.queue_free())
+
+	# Sky flash above the impact — brief bright wash so the bolt reads as huge
+	var flash := ColorRect.new()
+	flash.size = Vector2(220, 460)
+	flash.color = Color(0.85, 0.9, 1.0, 0.22)
+	flash.z_index = 104
+	add_child(flash)
+	flash.global_position = pos - Vector2(flash.size.x / 2.0, flash.size.y - 20)
+	var twfl := flash.create_tween()
+	twfl.tween_property(flash, "modulate:a", 0.0, 0.15)
+	twfl.tween_callback(func() -> void:
+		if is_instance_valid(flash):
+			flash.queue_free())
+
+	# Explosion: expanding shockwave ring sized to the AoE + hot inner ring
+	for ring_data in [[aoe_radius, Color(1.0, 0.85, 0.4, 0.9), 0.3], [aoe_radius * 0.55, Color(1, 1, 1, 0.95), 0.22]]:
+		var ring := Line2D.new()
+		ring.width = 4.0
+		ring.default_color = ring_data[1]
+		ring.z_index = 106
+		ring.closed = true
+		for i in range(21):
+			var t := TAU * float(i) / 20.0
+			ring.add_point(Vector2(cos(t), sin(t)) * 10.0)
+		add_child(ring)
+		ring.global_position = pos
+		var target_scale: float = ring_data[0] / 10.0
+		var twr := ring.create_tween()
+		twr.set_parallel(true)
+		twr.tween_property(ring, "scale", Vector2(target_scale, target_scale), ring_data[2]).set_ease(Tween.EASE_OUT)
+		twr.tween_property(ring, "width", 0.0, ring_data[2])
+		twr.tween_property(ring, "modulate:a", 0.0, ring_data[2] + 0.05)
+		twr.chain().tween_callback(func() -> void:
+			if is_instance_valid(ring):
+				ring.queue_free())
+
+	# Radial explosion sparks
+	for i in range(10):
+		var ang := TAU * float(i) / 10.0 + randf_range(-0.2, 0.2)
+		var s := ColorRect.new()
+		s.size = Vector2(6, 2)
+		s.color = Color(1.0, 0.9, 0.5, 0.95)
+		s.rotation = ang
+		s.z_index = 107
+		add_child(s)
+		s.global_position = pos
+		var fly := Vector2(cos(ang), sin(ang)) * randf_range(40.0, aoe_radius)
+		var tws := s.create_tween()
+		tws.set_parallel(true)
+		tws.tween_property(s, "global_position", pos + fly, 0.28).set_ease(Tween.EASE_OUT)
+		tws.tween_property(s, "modulate:a", 0.0, 0.3)
+		tws.chain().tween_callback(func() -> void:
+			if is_instance_valid(s):
+				s.queue_free())
+
+	# BURNING embers: flickering fire particles lingering at the scorch point
+	for i in range(14):
+		var e := ColorRect.new()
+		var sz := randf_range(2.0, 4.0)
+		e.size = Vector2(sz, sz)
+		e.color = [Color(1.0, 0.55, 0.15, 0.95), Color(1.0, 0.35, 0.1, 0.9), Color(1.0, 0.8, 0.3, 0.9)][i % 3]
+		e.z_index = 106
+		add_child(e)
+		e.global_position = pos + Vector2(randf_range(-aoe_radius * 0.6, aoe_radius * 0.6), randf_range(-6, 8))
+		var rise := randf_range(24.0, 55.0)
+		var life := randf_range(0.5, 1.1)
+		var twe := e.create_tween()
+		twe.set_parallel(true)
+		twe.tween_property(e, "global_position", e.global_position + Vector2(randf_range(-10, 10), -rise), life)
+		twe.tween_property(e, "scale", Vector2(0.15, 0.15), life).set_ease(Tween.EASE_IN)
+		twe.tween_property(e, "modulate:a", 0.0, life).set_delay(life * 0.35)
+		twe.chain().tween_callback(func() -> void:
+			if is_instance_valid(e):
+				e.queue_free())
+
+
 # ─── Mana circle break (overcharged laser fizzle) ────────────────────────────
 
 func circle_break(pos: Vector2) -> void:

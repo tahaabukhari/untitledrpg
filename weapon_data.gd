@@ -59,6 +59,21 @@ class_name WeaponData
 @export var combo_anims: Array[String] = []
 
 
+var _runtime_icon: Texture2D = null
+
+
+## UI icon: the exported texture, or one synthesized by the animator
+## (code-generated weapons like the wand/bow implement static make_icon()).
+func get_icon() -> Texture2D:
+	if weapon_icon:
+		return weapon_icon
+	if _runtime_icon == null and animator_script:
+		var anim = animator_script.new()
+		if anim and anim.has_method("make_icon"):
+			_runtime_icon = anim.make_icon()
+	return _runtime_icon
+
+
 const _MELEE_BEHAVIOR := preload("res://weapons/behaviors/weapon_behavior.gd")
 const _LASER_BEHAVIOR := preload("res://weapons/behaviors/laser_behavior.gd")
 const _HEAL_BEHAVIOR := preload("res://weapons/behaviors/heal_behavior.gd")

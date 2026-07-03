@@ -164,6 +164,11 @@ func _make_heal_channel(pivots: Dictionary) -> Animation:
 	return a
 
 
+func make_icon() -> Texture2D:
+	## Inventory icon for the icon-less wand (see WeaponData.get_icon).
+	return _make_wand_texture()
+
+
 static func _make_wand_texture() -> Texture2D:
 	## Code-drawn 16x16 wand: short stick with a glowing tip.
 	var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)

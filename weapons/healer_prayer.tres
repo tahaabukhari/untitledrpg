@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
+[ext_resource type="Script" path="res://weapons/animators/prayer_animator.gd" id="2_animator"]
+[ext_resource type="Script" path="res://weapons/behaviors/prayer_behavior.gd" id="3_behavior"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"healer_prayer"
+weapon_name = "Prayer"
+weapon_type = "Prayer"
+weapon_description = "Empty hands, clasped in faith. Rub them together in prayer - one plea in seven is answered by a bolt from the heavens that detonates on the nearest foe."
+animator_script = ExtResource("2_animator")
+behavior_script = ExtResource("3_behavior")
+atk_min = 0
+atk_max = 0
+attack_cooldown = 0.35
+stamina_cost = 0.0
+charged_style = "melee"
+charged_damage = 26
+charged_knockback = 0.0
+charged_stamina_cost = 0.0
+charge_time = 1.0
+attack_right_anim = "prayer_rub"
+attack_left_anim = "prayer_rub"
+charged_anim = "prayer_rub"
