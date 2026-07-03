@@ -165,6 +165,9 @@ func _ready():
 		var starter: WeaponData = load(starter_path)
 		if starter:
 			_on_weapon_equipped(starter)
+
+	# Apply character customization (hair/skin/outfit tints + hero name)
+	_apply_customization()
 	
 	# Setup the new PlayerHUD via CanvasLayer
 	player_hud = $HUDLayer/PlayerHUD
@@ -797,6 +800,33 @@ func _update_charge_telegraph() -> void:
 	elif _charge_orb != null and is_instance_valid(_charge_orb):
 		_charge_orb.queue_free()
 		_charge_orb = null
+
+
+# ─── Character customization ─────────────────────────────────────────────────
+
+func _apply_customization() -> void:
+	## Tints the puppet's layered sprites from Global.player_custom.
+	## Face is left untinted (eyes/features keep their art colors).
+	var custom: Dictionary = Global.player_custom
+	player_name = str(custom.get("name", "Adventurer"))
+	if not player_skin:
+		return
+	var hair: Color = custom.get("hair_color", Color(1, 1, 1))
+	var skin: Color = custom.get("skin_tone", Color(1, 1, 1))
+	var outfit: Color = custom.get("outfit_color", Color(1, 1, 1))
+	var tint_map := {
+		"HeadPivot/HairPivot/Sprite": hair,
+		"HeadPivot/Sprite": skin,
+		"LeftArmPivot/Sprite": skin,
+		"RightArmPivot/Sprite": skin,
+		"TorsoPivot/Sprite": outfit,
+		"LeftLegPivot/Sprite": outfit,
+		"RightLegPivot/Sprite": outfit,
+	}
+	for path in tint_map:
+		var sprite := player_skin.get_node_or_null(path) as CanvasItem
+		if sprite:
+			sprite.modulate = tint_map[path]
 
 
 # ─── Class switching (boss arena debug + respawn reuse) ─────────────────────

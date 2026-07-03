@@ -80,6 +80,7 @@ const CIRCLE_BG := Color(0.06, 0.06, 0.1, 0.9)
 const CIRCLE_BORDER := Color(0.25, 0.25, 0.4, 0.5)
 
 var _tween: Tween = null
+var player_name_text := ""
 
 signal inv_button_pressed
 signal profile_button_pressed
@@ -89,6 +90,14 @@ func _ready():
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_create_inv_button()
 	_create_profile_button()
+	call_deferred("_fetch_player_name")
+
+
+func _fetch_player_name() -> void:
+	var p = get_tree().get_first_node_in_group("player")
+	if p and "player_name" in p:
+		player_name_text = str(p.player_name)
+		queue_redraw()
 
 func update_hud(health: float, p_max_health: float, stamina: float, p_max_stamina: float, mana_val: float, p_max_mana: float, p_class: String = "", saturation: float = -1.0, exp_val: float = -1.0, p_max_exp: float = -1.0, level: int = -1) -> void:
 	target_health = health
@@ -159,7 +168,11 @@ func set_immediate(health: float, p_max_health: float, stamina: float, p_max_sta
 func _draw() -> void:
 	var font = pixel_font if pixel_font else ThemeDB.fallback_font
 	var y_cursor := HUD_Y
-	
+
+	# === Pixel frame panels (drawn first, behind everything) ===
+	_draw_pixel_frame(Rect2(6, 10, 396, 122))                       # left cluster
+	_draw_pixel_frame(Rect2(size.x - 324, 20, 296, 44))             # food cluster
+
 	# === Player Preview Circle + Saturation Arc ===
 	_draw_player_circle(font)
 	
@@ -225,6 +238,28 @@ func _draw_player_circle(font: Font) -> void:
 	# Level text below circle
 	var lvl_text = "LVL " + str(current_level)
 	draw_string(font, Vector2(cx - 16, cy + CIRCLE_RADIUS + 14), lvl_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.9, 0.9, 0.9, 1.0))
+
+	# Hero name plate under the level (from character customization)
+	if player_name_text != "":
+		var name_w := font.get_string_size(player_name_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 8).x
+		draw_string(font, Vector2(cx - name_w / 2.0 + 1, cy + CIRCLE_RADIUS + 27),
+			player_name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0, 0, 0, 0.7))
+		draw_string(font, Vector2(cx - name_w / 2.0, cy + CIRCLE_RADIUS + 26),
+			player_name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, CLASS_COLOR)
+
+
+func _draw_pixel_frame(rect: Rect2) -> void:
+	## Hard-edged pixel panel: dark fill, light 2px border, corner notches.
+	draw_rect(rect, Color(0.05, 0.05, 0.09, 0.72))
+	draw_rect(rect, Color(0.32, 0.3, 0.42, 0.75), false, 2.0)
+	# Corner notches for the pixel look
+	var notch := 4.0
+	var notch_col := Color(0.55, 0.5, 0.65, 0.9)
+	for corner in [rect.position,
+			rect.position + Vector2(rect.size.x - notch, 0),
+			rect.position + Vector2(0, rect.size.y - notch),
+			rect.position + rect.size - Vector2(notch, notch)]:
+		draw_rect(Rect2(corner, Vector2(notch, notch)), notch_col)
 
 func _draw_pixel_heart(pos: Vector2, s: float, fill_ratio: float) -> void:
 	# Hear center
@@ -344,7 +379,12 @@ func _draw_stat_bar(pos: Vector2, label: String, current: float, maximum: float,
 	if fill_ratio > 0:
 		var highlight_rect = Rect2(bar_x + 1, pos.y + 1, (BAR_WIDTH - 2) * fill_ratio, 2)
 		draw_rect(highlight_rect, Color(fill_col.r + 0.2, fill_col.g + 0.2, fill_col.b + 0.2, 0.4))
-	
+
+	# Pixel segment ticks (every 20%)
+	for i in range(1, 5):
+		var tick_x = bar_x + BAR_WIDTH * float(i) / 5.0
+		draw_rect(Rect2(tick_x, pos.y + 1, 1, BAR_HEIGHT - 2), Color(0, 0, 0, 0.35))
+
 	# Border
 	draw_rect(bar_rect, border_col, false, 1.0)
 	
@@ -366,7 +406,7 @@ func _create_inv_button():
 	normal_style.bg_color = Color(0.1, 0.1, 0.14, 0.85)
 	normal_style.border_color = Color(0.55, 0.45, 0.2, 0.7)
 	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(5)
+	normal_style.set_corner_radius_all(0)  # crisp pixel corners
 	normal_style.content_margin_left = 12
 	normal_style.content_margin_right = 12
 	normal_style.content_margin_top = 6
