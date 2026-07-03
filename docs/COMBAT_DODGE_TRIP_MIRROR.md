@@ -97,8 +97,23 @@ own puppet animation.
 ## 3. Tripping
 
 **Rule:** when a combatant is **sliding** (§2b) and its SlideBox overlaps an
-opponent who is **grounded and not invulnerable/airborne**, that opponent **trips** —
-falls to their knees, `DOWNED` for **2.0s**, unable to act and wide open.
+opponent who is **grounded, not invulnerable/airborne, AND stands on two legs**,
+that opponent **trips** — falls to their knees, `DOWNED` for **2.0s**, unable to
+act and wide open.
+
+### 3.0 Only bipeds can be tripped  **(hard rule — must-honor)**
+You can only sweep the legs out from something that *has* two legs. Tripping
+checks a **`trippable` (bipedal)** flag on the target and no-ops otherwise:
+- **Trippable (bipedal):** the **player**, the **Mirror Warrior**, and any future
+  humanoid. `trip()` on a non-bipedal target does nothing (no knockdown, no state).
+- **NOT trippable:** **slime** (a blob — no legs), **bombug** (flying centipede),
+  **mannequin** (mounted on a post), and — unless we decide otherwise — the
+  **whisperer** and the **4-blade boss**. A slide still passes harmlessly under
+  them; it just can't knock them down.
+- Implementation: `EnemyBase.trippable: bool = false` (default — most creatures
+  aren't bipedal); set `true` only on humanoids. The player is trippable. `trip()`
+  early-returns unless the target reports `trippable == true`. This keeps the
+  detail declarative and impossible to forget per-monster.
 
 ### Shared "downed" state
 Both the player and monsters need it, so it's a small shared concept:
@@ -118,6 +133,9 @@ Both the player and monsters need it, so it's a small shared concept:
 - Slide *through* a windup to trip the attacker → free punish (the intended combo).
 - A leaping/rolling target is airborne/i-framed → **immune**, so trips aren't
   guaranteed; spacing matters.
+- Non-bipedal enemies (§3.0) are **immune by nature** — vs. slimes/bombugs the
+  slide is purely a mobility/i-frame tool, so tripping shines specifically in
+  humanoid duels (esp. the Mirror Warrior).
 - Perfect-parry does not stop a slide (it's not an "attack"), but you can slide to
   beat a slide (both whiff / neither grounded).
 
@@ -221,6 +239,9 @@ I'll **build in the order you specify** — this is just the dependency-sane def
 2. **Downed severity** — does a downed target take extra damage (punish combo) or 1×?
 3. **Trip fairness** — should trips cost the slider anything, or be free on connect?
    Any cap so a mirror can't perma-trip-loop you (I've proposed stand-up immunity)?
+3b. **Bipedal roster** — confirmed trippable: player + Mirror Warrior; confirmed
+   immune: slime, bombug, mannequin. **Your call on the whisperer and the 4-blade
+   boss** — do they count as "standing on two legs"? (Default: both immune.)
 4. **Mirror v1 scope** — warrior sword kit only (my proposal), or must it mirror
    whatever class/weapon *you* currently hold?
 5. **Blood intensity / tone** — punchy-but-tasteful (default), or dial way down?
