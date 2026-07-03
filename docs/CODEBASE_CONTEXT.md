@@ -1,5 +1,11 @@
 # CODEBASE CONTEXT — UNTITLED RPG
 
+> ⚠️ **SUPERSEDED — HISTORICAL ONLY.** This describes the codebase BEFORE the
+> combat overhaul was executed (all 8 phases of `MASTER_PROMPT.md` are done,
+> and the game is now named *Wonders Of Creation*). For the CURRENT
+> architecture, read **`ARCHITECTURE.md`** instead. Kept only as context for
+> the original handoff docs.
+
 > Reference document for any model/engineer executing work on this project.
 > Read this **fully** before touching code. It captures the actual architecture,
 > conventions, and known issues so your changes match the existing style and
