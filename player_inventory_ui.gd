@@ -4,7 +4,7 @@ extends Control
 # Equipment section with player preview + scrollable 52-slot inventory grid
 
 signal inventory_closed
-signal weapon_equipped(weapon: WeaponData)
+signal weapon_equipped(instance: ItemInstance)
 signal weapon_unequipped
 
 var pixel_font: Font = null
@@ -257,8 +257,8 @@ func _wire_slot_signals(slot: Control) -> void:
 		slot.slot_pressed.connect(_on_slot_clicked)
 
 
-func _on_item_equipped(weapon: WeaponData, _stype: String) -> void:
-	weapon_equipped.emit(weapon)
+func _on_item_equipped(inst: ItemInstance, _stype: String) -> void:
+	weapon_equipped.emit(inst)
 
 
 func _on_item_unequipped(_stype: String) -> void:
@@ -272,8 +272,9 @@ func _on_slot_clicked(slot: Control) -> void:
 
 # ─── Weapon Preview Card ─────────────────────────────────────────────────────
 
-func _show_weapon_preview_card(weapon: WeaponData, source_slot: Control) -> void:
+func _show_weapon_preview_card(inst: ItemInstance, source_slot: Control) -> void:
 	_dismiss_preview_card()
+	var weapon: WeaponData = inst.def  # read definition stats through the instance
 	
 	preview_card = PanelContainer.new()
 	preview_card.add_theme_stylebox_override("panel", _make_card_style())
@@ -478,17 +479,17 @@ func _make_equip_btn_style(is_hover: bool) -> StyleBoxFlat:
 
 # ─── Item Management ─────────────────────────────────────────────────────────
 
-func add_item(weapon: WeaponData) -> bool:
-	## Add a weapon to the first empty inventory slot. Returns true if successful.
+func add_item(inst: ItemInstance) -> bool:
+	## Add an item instance to the first empty inventory slot. True if it fit.
 	for slot in inventory_slots:
 		if slot.is_empty:
-			slot.set_item(weapon)
+			slot.set_item(inst)
 			return true
 	return false  # inventory full
 
 
-func get_mainhand_weapon() -> WeaponData:
-	## Returns the weapon in the mainhand slot, or null.
+func get_mainhand_weapon() -> ItemInstance:
+	## Returns the instance in the mainhand slot, or null.
 	if equip_slots.has("mainhand"):
 		return equip_slots["mainhand"].item
 	return null
@@ -500,11 +501,11 @@ func _add_starting_items() -> void:
 	match cls:
 		"Mage":
 			# The Arcane Conduit (beam staff) — equip it to wield the charged laser
-			var beam_staff = ItemDB.get_item(&"mage_beam_staff")
+			var beam_staff = ItemDB.make_instance(&"mage_beam_staff")
 			if beam_staff:
 				add_item(beam_staff)
 		"Warrior":
-			var sword = ItemDB.get_item(&"starter_sword")
+			var sword = ItemDB.make_instance(&"starter_sword")
 			if sword:
 				add_item(sword)
 		_:

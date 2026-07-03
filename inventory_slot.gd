@@ -4,13 +4,13 @@ extends PanelContainer
 # Supports drag-and-drop of WeaponData items with icon display
 
 signal slot_pressed(slot: Control)
-signal item_equipped(weapon: WeaponData, slot_type: String)
+signal item_equipped(instance: ItemInstance, slot_type: String)
 signal item_unequipped(slot_type: String)
 
 var slot_type := "inventory"  # "inventory", "helmet", "chest", "pants", "boots", "mainhand", "offhand", "trinket"
 var slot_index := 0
 var is_empty := true
-var item: WeaponData = null
+var item: ItemInstance = null   # unique instance held by this slot (null = empty)
 
 var pixel_font: Font = null
 var icon_rect: TextureRect = null
@@ -94,9 +94,9 @@ func set_slot_type(type: String, idx: int = 0):
 
 # ─── Item Management ─────────────────────────────────────────────────────────
 
-func set_item(weapon: WeaponData) -> void:
-	item = weapon
-	is_empty = (weapon == null)
+func set_item(inst: ItemInstance) -> void:
+	item = inst
+	is_empty = (inst == null)
 	_update_icon()
 
 func clear_item() -> void:
@@ -107,8 +107,8 @@ func clear_item() -> void:
 func _update_icon() -> void:
 	if not icon_rect:
 		return
-	if item and item.weapon_icon:
-		icon_rect.texture = item.weapon_icon
+	if item and item.def and item.def.weapon_icon:
+		icon_rect.texture = item.def.weapon_icon
 		icon_rect.visible = true
 		if type_label:
 			type_label.visible = false
@@ -127,15 +127,15 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 
 	# Create drag preview
 	var preview = TextureRect.new()
-	preview.texture = item.weapon_icon
+	preview.texture = item.def.weapon_icon if item.def else null
 	preview.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.modulate = Color(1, 1, 1, 0.8)
 	set_drag_preview(preview)
 
-	# Return the drag payload
-	var data = {"source_slot": self, "weapon": item}
+	# Return the drag payload (carries the unique instance)
+	var data = {"source_slot": self, "instance": item}
 
 	# Visually dim the source slot while dragging
 	icon_rect.modulate = Color(1, 1, 1, 0.3)
@@ -146,7 +146,7 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	if data == null or not data is Dictionary:
 		return false
-	if not data.has("weapon"):
+	if not data.has("instance"):
 		return false
 
 	# Only allow weapons in mainhand, offhand, or inventory slots
@@ -160,7 +160,7 @@ func _drop_data(_at_position: Vector2, data: Variant) -> void:
 		return
 
 	var source_slot: Control = data["source_slot"]
-	var dragged_weapon: WeaponData = data["weapon"]
+	var dragged_weapon: ItemInstance = data["instance"]
 
 	# Restore source slot visual
 	if source_slot and source_slot.icon_rect:

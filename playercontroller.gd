@@ -70,6 +70,7 @@ const LONG_FALL_THRESHOLD := 2.0  # seconds before switching to long_fall anim
 
 # Combat — driven by equipped weapon
 @export var equipped_weapon: WeaponData = preload("res://weapons/weapon_fists.tres")
+var equipped_instance: ItemInstance = null  # unique instance backing equipped_weapon
 var _behavior: WeaponBehavior = null   # charged-attack plugin for equipped_weapon
 var is_attacking := false
 var attack_cooldown_timer := 0.0
@@ -1026,15 +1027,25 @@ func apply_class(cls: String) -> void:
 
 const DEFAULT_WEAPON: WeaponData = preload("res://weapons/weapon_fists.tres")
 
-func _on_weapon_equipped(weapon: WeaponData) -> void:
-	equipped_weapon = weapon
-	_behavior = weapon.get_behavior()
+func _on_weapon_equipped(w) -> void:
+	## Accepts an ItemInstance (from inventory) OR a bare WeaponData template
+	## (spawn/class-switch/tests) — a template is wrapped in a fresh instance so
+	## the equipped item is always unique. Combat reads stats from
+	## equipped_weapon (the definition); per-instance state lives on
+	## equipped_instance.
+	if w is ItemInstance:
+		equipped_instance = w
+	else:
+		equipped_instance = ItemInstance.make(w)
+	equipped_weapon = equipped_instance.def
+	_behavior = equipped_weapon.get_behavior()
 	if input_ctrl:
-		input_ctrl.charge_time = weapon.charge_time
+		input_ctrl.charge_time = equipped_weapon.charge_time
 	if player_skin and player_skin.has_method("equip_weapon_visual"):
-		player_skin.equip_weapon_visual(weapon)
+		player_skin.equip_weapon_visual(equipped_weapon)
 
 func _on_weapon_unequipped() -> void:
+	equipped_instance = ItemInstance.make(DEFAULT_WEAPON)
 	equipped_weapon = DEFAULT_WEAPON
 	_behavior = DEFAULT_WEAPON.get_behavior()
 	if input_ctrl:

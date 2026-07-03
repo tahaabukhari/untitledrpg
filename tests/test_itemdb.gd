@@ -55,5 +55,28 @@ func _run() -> void:
 	_check("all_of_kind('weapon') lists them", db.all_of_kind("weapon").size() >= 6)
 	_check("all_ids matches count", db.all_ids().size() == db.count())
 
+	# ── Unique instances: distinct objects sharing one definition ─────────
+	var a: ItemInstance = db.make_instance(&"starter_sword")
+	var b: ItemInstance = db.make_instance(&"starter_sword")
+	_check("make_instance returns an ItemInstance", a != null and a is ItemInstance)
+	_check("two instances are DISTINCT objects", a != b)
+	_check("instances have unique uids", a.uid != b.uid)
+	_check("instances SHARE the definition (flyweight def)", a.def == b.def and a.def == db.get_item(&"starter_sword"))
+	_check("instance exposes def stats", a.def.weapon_type == "Sword")
+	_check("make_instance of unknown id → null", db.make_instance(&"nope") == null)
+
+	# ── Per-instance state is independent ─────────────────────────────────
+	a.durability = 50.0
+	_check("mutating one instance doesn't touch the other", b.durability != 50.0)
+
+	# ── Save round-trip via id + state ────────────────────────────────────
+	a.affixes = ["sharp"]
+	var dict := a.to_dict()
+	_check("to_dict stores the def id", dict.get("id") == "starter_sword")
+	var restored: ItemInstance = db.instance_from_dict(dict)
+	_check("instance_from_dict rebuilds the same def", restored != null and restored.def == a.def)
+	_check("instance_from_dict restores state", restored.durability == 50.0 and restored.affixes == ["sharp"])
+	_check("instance_from_dict of unknown id → null", db.instance_from_dict({"id": "nope"}) == null)
+
 	print("RESULT: %s (%d failures)" % ["OK" if _fails == 0 else "FAILED", _fails])
 	quit(1 if _fails > 0 else 0)

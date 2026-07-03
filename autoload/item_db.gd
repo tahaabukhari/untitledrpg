@@ -78,6 +78,26 @@ func has_item(item_id) -> bool:
 	return _items.has(StringName(item_id))
 
 
+func make_instance(item_id) -> ItemInstance:
+	## Mint a fresh UNIQUE instance of the catalogued item, or null if unknown.
+	## This is what inventory/drops should call — get_item() is for read-only
+	## definition access (previews, stat lookups).
+	var def: WeaponData = get_item(item_id)
+	if def == null:
+		return null
+	return ItemInstance.make(def)
+
+
+func instance_from_dict(d: Dictionary) -> ItemInstance:
+	## Rehydrate a saved ItemInstance (see ItemInstance.to_dict). Null if the
+	## saved id is no longer in the catalog (removed/renamed item).
+	var inst := make_instance(d.get("id", ""))
+	if inst == null:
+		return null
+	inst.apply_state(d)
+	return inst
+
+
 func all_of_kind(kind: String) -> Array:
 	return _by_kind.get(kind, [])
 
