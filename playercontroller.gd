@@ -21,6 +21,8 @@ const SLIDE_TIME := 0.4
 const SLIDE_IFRAMES := 0.32
 const SLIDE_TRIP_REACH := 48.0
 const SLIDE_TRIP_HEIGHT := 42.0
+const SLIDE_TRIP_CHANCE := 0.3         # only 30% of slide-unders actually knock down
+const SLIDE_KNOCKDOWN_STAMINA := 50    # extra stamina burned on a SUCCESSFUL knockdown
 
 # Tripping / knockdown (bipeds only)
 const TRIP_DURATION := 2.0
@@ -1233,13 +1235,14 @@ func take_damage(amount: int, source_pos: Vector2, knockback: Vector2 = Vector2.
 	return true
 
 
-func trip(duration: float = TRIP_DURATION) -> void:
+func trip(duration: float = TRIP_DURATION) -> bool:
 	## Swept off our feet: knocked to our knees, no control, wide open. Bipeds
 	## only — the player has legs, so this lands (unless we're mid-dodge/i-frame).
+	## Returns true if the knockdown actually landed (the slider pays for it).
 	if is_dead or is_downed or not trippable:
-		return
+		return false
 	if invuln_timer > 0.0 or is_rolling or trip_immunity_timer > 0.0 or not is_on_floor():
-		return  # dodging / airborne / just-recovered → immune
+		return false  # dodging / airborne / just-recovered → immune
 	is_downed = true
 	downed_timer = duration
 	is_attacking = false
@@ -1251,6 +1254,7 @@ func trip(duration: float = TRIP_DURATION) -> void:
 		if player_skin.has_method("play_knockdown"):
 			player_skin.play_knockdown()
 	Fx.trip_dust(global_position + Vector2(0, 18))
+	return true
 
 
 func stagger(duration: float = 0.4, push: Vector2 = Vector2.ZERO) -> void:
@@ -1474,15 +1478,20 @@ func _start_evade_leap(mv: Vector2) -> void:
 
 
 func _slide_trip_check() -> void:
-	## While sliding, sweep the legs of any BIPEDAL enemy we pass under.
+	## While sliding we always pass THROUGH opponents (the i-frames are the
+	## reliable payoff — evade attacks), but only a 30% roll actually sweeps a
+	## BIPEDAL enemy's legs. One attempt per enemy per slide; a successful
+	## knockdown costs 50 extra stamina.
 	for e in get_tree().get_nodes_in_group("enemy"):
 		if not is_instance_valid(e) or e in _slide_tripped or not e is Node2D:
 			continue
 		var to: Vector2 = e.global_position - global_position
 		if signf(to.x) == float(facing) and absf(to.x) <= SLIDE_TRIP_REACH \
 				and absf(to.y) <= SLIDE_TRIP_HEIGHT and e.has_method("trip"):
-			_slide_tripped.append(e)
-			e.trip(TRIP_DURATION)  # trip() no-ops on non-bipeds
+			_slide_tripped.append(e)  # one chance per enemy this slide
+			if randf() < SLIDE_TRIP_CHANCE and e.trip(TRIP_DURATION):
+				stamina = max(stamina - SLIDE_KNOCKDOWN_STAMINA, 0)
+				update_bars()
 
 
 func _perform_parry() -> void:

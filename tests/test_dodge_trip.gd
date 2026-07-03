@@ -83,16 +83,35 @@ func _run() -> void:
 	current_scene.add_child(blob)
 	blob.trippable = false                          # a legless dummy
 	await _wait_frames(5)
-	player.global_position.y = biped.global_position.y  # same height
-	biped.global_position = player.global_position + Vector2(34, 0)
-	blob.global_position = player.global_position + Vector2(44, 0)
-	player.facing = 1
-	_reset_dodge(player)
-	player.joystick_vector = Vector2(0, 1)          # slide into them
-	player._perform_dodge_roll()
-	await _wait_frames(30)
-	_check("slide TRIPS the biped", biped.is_downed)
-	_check("slide does NOT trip the legless one (bipedal-only rule)", not blob.is_downed)
+	# Slide knockdown is a 30% ROLL (failures still pass through / evade), bipeds
+	# only, and a success burns +50 stamina. Verify statistically over many slides.
+	var knockdowns := 0
+	var blob_downs := 0
+	var stamina_on_knockdown := -1.0
+	for i in range(30):
+		biped.is_downed = false
+		biped.downed_timer = 0.0
+		blob.is_downed = false
+		blob.downed_timer = 0.0
+		_reset_dodge(player)
+		player.stamina = player.max_stamina
+		biped.global_position = player.global_position + Vector2(34, 0)
+		blob.global_position = player.global_position + Vector2(44, 0)
+		player.facing = 1
+		player.joystick_vector = Vector2(0, 1)
+		player._perform_dodge_roll()
+		await _wait_frames(14)
+		if biped.is_downed:
+			knockdowns += 1
+			stamina_on_knockdown = player.stamina
+		if blob.is_downed:
+			blob_downs += 1
+		await _wait_frames(16)  # let the slide end
+	_check("knockdown is a chance, not guaranteed (0 < %d < 30)" % knockdowns,
+		knockdowns > 0 and knockdowns < 30)
+	_check("legless dummy never tripped (bipedal-only rule)", blob_downs == 0)
+	_check("successful knockdown burned +50 stamina (%.0f left of %d)" % [stamina_on_knockdown, player.max_stamina],
+		stamina_on_knockdown >= 0.0 and stamina_on_knockdown <= player.max_stamina - 70)
 	biped.queue_free()
 	blob.queue_free()
 	await _wait_frames(45)

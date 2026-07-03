@@ -15,6 +15,9 @@ enum MState { IDLE, APPROACH, ATTACK, PARRY, DODGE, SLIDE, RECOVER }
 @export var slide_chance: float = 0.3       ## slide-to-trip instead of a swing
 
 const TINT := Color(0.5, 0.78, 1.7)         ## bright blue glow
+const SLIDE_TRIP_CHANCE := 0.3              ## only 30% of slides knock the player down
+const SLIDE_KNOCKDOWN_STAMINA := 50.0       ## extra stamina spent on a successful knockdown
+const STAMINA_REGEN := 18.0                 ## per second
 
 var mstate: int = MState.IDLE
 var mstate_timer := 0.0
@@ -22,6 +25,9 @@ var action_cd := 0.0
 var react_cd := 0.0
 var iframe := 0.0
 var parry_win := 0.0
+var stamina := 140.0                        ## mirrors the warrior's pool; gates slide-trips
+var max_stamina := 140.0
+var _slide_attempted := false
 var _attack_elapsed := 0.0
 var _hitbox_live := false
 var _face := 1
@@ -84,6 +90,7 @@ func _enemy_physics(delta: float) -> void:
 	action_cd = maxf(action_cd - delta, 0.0)
 	react_cd = maxf(react_cd - delta, 0.0)
 	iframe = maxf(iframe - delta, 0.0)
+	stamina = minf(stamina + STAMINA_REGEN * delta, max_stamina)
 	mstate_timer -= delta
 
 	_face_player()
@@ -123,8 +130,8 @@ func _enemy_physics(delta: float) -> void:
 func _process_approach(delta: float) -> void:
 	var d := _dist()
 	if d < attack_range and action_cd <= 0.0:
-		# In range: slide-to-trip (esp. if they're grounded) or swing
-		if randf() < slide_chance and _player_grounded():
+		# In range: slide-to-trip (only if it can afford a knockdown) or swing
+		if randf() < slide_chance and _player_grounded() and stamina >= SLIDE_KNOCKDOWN_STAMINA:
 			_enter_slide()
 		else:
 			_enter_attack()
@@ -187,6 +194,7 @@ func _enter_slide() -> void:
 	mstate_timer = 0.42
 	action_cd = 1.2
 	iframe = 0.3
+	_slide_attempted = false
 	velocity.x = _face * 520.0
 	if _skin and _skin.has_method("play_slide"):
 		_skin.play_slide()
@@ -194,11 +202,14 @@ func _enter_slide() -> void:
 
 func _process_slide(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, _face * 520.0, 200 * delta)
-	# Sweep the player's legs if we pass under them
-	if player and is_instance_valid(player) and player.has_method("trip"):
+	# One attempt per slide: always pass through (evade), but only a 30% roll
+	# actually trips the player — and a successful knockdown costs 50 stamina.
+	if not _slide_attempted and player and is_instance_valid(player) and player.has_method("trip"):
 		var to: Vector2 = player.global_position - global_position
 		if signf(to.x) == float(_face) and absf(to.x) < 52.0 and absf(to.y) < 46.0:
-			player.trip(2.0)  # no-ops if the player is airborne / i-framed
+			_slide_attempted = true
+			if randf() < SLIDE_TRIP_CHANCE and player.trip(2.0):
+				stamina = maxf(stamina - SLIDE_KNOCKDOWN_STAMINA, 0.0)
 	if mstate_timer <= 0.0:
 		_to_recover(0.25)
 

@@ -101,22 +101,32 @@ func _run() -> void:
 			break
 	_check("mirror attacks the player like the player would", hit)
 
-	# ── Mirror can trip the player (slide) ───────────────────────────────
-	player.is_downed = false
-	player.invuln_timer = 0.0
-	player.is_rolling = false
-	player.trip_immunity_timer = 0.0
-	player.global_position = mirror.global_position + Vector2(40, 0)
-	await _wait_frames(2)
-	mirror._face = 1 if player.global_position.x > mirror.global_position.x else -1
-	mirror._enter_slide()
+	# ── Mirror can trip the player (30% chance-based slide, costs it stamina) ─
 	var tripped := false
-	for i in range(30):
-		await physics_frame
-		if player.is_downed:
-			tripped = true
+	var mirror_sta_on_trip := -1.0
+	for attempt in range(25):
+		player.is_downed = false
+		player.downed_timer = 0.0
+		player.invuln_timer = 0.0
+		player.is_rolling = false
+		player.trip_immunity_timer = 0.0
+		player.global_position = mirror.global_position + Vector2(40, 0)
+		await _wait_frames(2)
+		mirror._face = 1 if player.global_position.x > mirror.global_position.x else -1
+		mirror.stamina = mirror.max_stamina
+		mirror._enter_slide()
+		for i in range(20):
+			await physics_frame
+			if player.is_downed:
+				tripped = true
+				mirror_sta_on_trip = mirror.stamina
+				break
+		if tripped:
 			break
-	_check("mirror slide trips the player", tripped)
+		await _wait_frames(6)
+	_check("mirror slide CAN trip the player (chance-based)", tripped)
+	_check("a successful mirror knockdown costs it stamina",
+		mirror_sta_on_trip >= 0.0 and mirror_sta_on_trip < mirror.max_stamina - 30.0)
 	await _wait_frames(10)
 
 	# ── Killable with big EXP ─────────────────────────────────────────────

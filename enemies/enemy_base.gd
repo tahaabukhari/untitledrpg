@@ -114,11 +114,12 @@ func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
 		_die()
 
 
-func trip(duration: float = 2.0) -> void:
+func trip(duration: float = 2.0) -> bool:
 	## Swept off its feet — knocked to its knees for `duration`, wide open.
 	## HARD RULE: only bipedal enemies can be tripped; everything else no-ops.
+	## Returns true if the knockdown actually landed (the slider pays for it).
 	if not trippable or is_dead or is_downed:
-		return
+		return false
 	is_downed = true
 	downed_timer = duration
 	disable_attack_hitbox()
@@ -126,6 +127,7 @@ func trip(duration: float = 2.0) -> void:
 	flash_hit(Color(1.0, 0.9, 0.5))
 	Fx.trip_dust(global_position + Vector2(0, 12))
 	_on_tripped()
+	return true
 
 
 ## Subclass hook — interrupt the attack state machine when tripped.
