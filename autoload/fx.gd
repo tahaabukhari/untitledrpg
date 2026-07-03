@@ -432,6 +432,172 @@ func lightning_strike(pos: Vector2, aoe_radius: float = 90.0) -> void:
 				e.queue_free())
 
 
+# ─── Bomb explosion (bombug detonation) ──────────────────────────────────────
+
+func bomb_explosion(pos: Vector2, radius: float = 95.0) -> void:
+	## Bombug blast: black-purple charge shell snapping into a white-hot core,
+	## twin shockwaves, jagged shrapnel sparks, embers, and thick smoke.
+	var shell := Polygon2D.new()
+	var shell_pts := PackedVector2Array()
+	for i in range(18):
+		var t := TAU * float(i) / 18.0
+		var r := 10.0 + sin(t * 3.0) * 1.8
+		shell_pts.append(Vector2(cos(t), sin(t)) * r)
+	shell.polygon = shell_pts
+	shell.color = Color(0.38, 0.18, 0.54, 0.85)
+	shell.z_index = 106
+	add_child(shell)
+	shell.global_position = pos
+	var tw_shell := shell.create_tween()
+	tw_shell.set_parallel(true)
+	tw_shell.tween_property(shell, "scale", Vector2(radius / 20.0, radius / 20.0), 0.12).set_ease(Tween.EASE_OUT)
+	tw_shell.tween_property(shell, "modulate:a", 0.0, 0.16)
+	tw_shell.chain().tween_callback(func() -> void:
+		if is_instance_valid(shell):
+			shell.queue_free())
+
+	var core := Polygon2D.new()
+	var core_pts := PackedVector2Array()
+	for i in range(16):
+		var t := TAU * float(i) / 16.0
+		core_pts.append(Vector2(cos(t), sin(t)) * 10.0)
+	core.polygon = core_pts
+	core.color = Color(1.0, 1.0, 0.96, 0.98)
+	core.z_index = 107
+	add_child(core)
+	core.global_position = pos
+	var twc := core.create_tween()
+	twc.set_parallel(true)
+	twc.tween_property(core, "scale", Vector2(radius / 18.0, radius / 18.0), 0.18).set_ease(Tween.EASE_OUT)
+	twc.tween_property(core, "color", Color(1.0, 0.45, 0.12, 0.0), 0.24)
+	twc.chain().tween_callback(func() -> void:
+		if is_instance_valid(core):
+			core.queue_free())
+
+	for ring_data in [
+		[radius, Color(1.0, 0.72, 0.3, 0.92), 0.28, 4.5],
+		[radius * 0.72, Color(1.0, 0.98, 0.92, 0.95), 0.2, 3.0],
+		[radius * 1.08, Color(0.62, 0.38, 0.82, 0.45), 0.34, 2.0]
+	]:
+		var ring := Line2D.new()
+		ring.width = ring_data[3]
+		ring.default_color = ring_data[1]
+		ring.z_index = 106
+		ring.closed = true
+		for i in range(25):
+			var t := TAU * float(i) / 24.0
+			ring.add_point(Vector2(cos(t), sin(t)) * 10.0)
+		add_child(ring)
+		ring.global_position = pos
+		var target_scale: float = ring_data[0] / 10.0
+		var twr := ring.create_tween()
+		twr.set_parallel(true)
+		twr.tween_property(ring, "scale", Vector2(target_scale, target_scale), ring_data[2]).set_ease(Tween.EASE_OUT)
+		twr.tween_property(ring, "width", 0.0, ring_data[2])
+		twr.tween_property(ring, "modulate:a", 0.0, ring_data[2] + 0.06)
+		twr.chain().tween_callback(func() -> void:
+			if is_instance_valid(ring):
+				ring.queue_free())
+
+	for i in range(14):
+		var ang := TAU * float(i) / 14.0 + randf_range(-0.22, 0.22)
+		var spark := ColorRect.new()
+		spark.size = Vector2(randf_range(7.0, 11.0), 2)
+		spark.color = [Color(1.0, 0.78, 0.32, 0.95), Color(1.0, 0.98, 0.9, 0.92), Color(0.78, 0.55, 1.0, 0.85)][i % 3]
+		spark.rotation = ang
+		spark.z_index = 107
+		add_child(spark)
+		spark.global_position = pos
+		var fly := Vector2(cos(ang), sin(ang)) * randf_range(radius * 0.45, radius * 1.2)
+		var tws := spark.create_tween()
+		tws.set_parallel(true)
+		tws.tween_property(spark, "global_position", pos + fly, 0.3).set_ease(Tween.EASE_OUT)
+		tws.tween_property(spark, "scale", Vector2(0.2, 0.2), 0.3)
+		tws.tween_property(spark, "modulate:a", 0.0, 0.32)
+		tws.chain().tween_callback(func() -> void:
+			if is_instance_valid(spark):
+				spark.queue_free())
+
+	for i in range(10):
+		var puff := Polygon2D.new()
+		var puff_pts := PackedVector2Array()
+		var pr := randf_range(7.0, 13.0)
+		for j in range(12):
+			var t := TAU * float(j) / 12.0
+			puff_pts.append(Vector2(cos(t), sin(t)) * pr * randf_range(0.85, 1.15))
+		puff.polygon = puff_pts
+		var shade := randf_range(0.2, 0.34)
+		puff.color = Color(shade, shade, shade + 0.04, randf_range(0.4, 0.62))
+		puff.z_index = 105
+		add_child(puff)
+		puff.global_position = pos + Vector2(randf_range(-radius * 0.42, radius * 0.42), randf_range(-radius * 0.22, radius * 0.16))
+		var life := randf_range(0.85, 1.45)
+		var twp := puff.create_tween()
+		twp.set_parallel(true)
+		twp.tween_property(puff, "scale", Vector2(2.4, 2.4), life).set_ease(Tween.EASE_OUT)
+		twp.tween_property(puff, "global_position",
+			puff.global_position + Vector2(randf_range(-16, 16), -randf_range(26, 58)), life)
+		twp.tween_property(puff, "modulate:a", 0.0, life).set_delay(life * 0.25)
+		twp.chain().tween_callback(func() -> void:
+			if is_instance_valid(puff):
+				puff.queue_free())
+
+	for i in range(8):
+		var ember := ColorRect.new()
+		var sz := randf_range(2.0, 3.8)
+		ember.size = Vector2(sz, sz)
+		ember.color = [Color(1.0, 0.5, 0.15, 0.92), Color(1.0, 0.3, 0.1, 0.88), Color(0.8, 0.55, 1.0, 0.72)][i % 3]
+		ember.z_index = 106
+		add_child(ember)
+		ember.global_position = pos + Vector2(randf_range(-radius * 0.4, radius * 0.4), randf_range(-8, 8))
+		var life2 := randf_range(0.5, 0.95)
+		var twe := ember.create_tween()
+		twe.set_parallel(true)
+		twe.tween_property(ember, "global_position", ember.global_position + Vector2(randf_range(-12, 12), -randf_range(20, 46)), life2)
+		twe.tween_property(ember, "modulate:a", 0.0, life2).set_delay(life2 * 0.25)
+		twe.chain().tween_callback(func() -> void:
+			if is_instance_valid(ember):
+				ember.queue_free())
+
+
+func bomb_defuse(pos: Vector2, radius: float = 30.0) -> void:
+	## A harmless collapse of unstable energy when an armed bombug is killed.
+	var ring := Line2D.new()
+	ring.width = 3.0
+	ring.default_color = Color(0.95, 0.72, 1.0, 0.85)
+	ring.z_index = 107
+	ring.closed = true
+	for i in range(17):
+		var t := TAU * float(i) / 16.0
+		ring.add_point(Vector2(cos(t), sin(t)) * 7.0)
+	add_child(ring)
+	ring.global_position = pos
+	var twr := ring.create_tween()
+	twr.set_parallel(true)
+	twr.tween_property(ring, "scale", Vector2(radius / 7.0, radius / 7.0), 0.22).set_ease(Tween.EASE_OUT)
+	twr.tween_property(ring, "modulate:a", 0.0, 0.24)
+	twr.chain().tween_callback(func() -> void:
+		if is_instance_valid(ring):
+			ring.queue_free())
+
+	for i in range(8):
+		var mote := ColorRect.new()
+		mote.size = Vector2(3, 3)
+		mote.color = [Color(1.0, 0.9, 0.98, 0.92), Color(0.85, 0.65, 1.0, 0.85)][i % 2]
+		mote.z_index = 108
+		add_child(mote)
+		mote.global_position = pos + Vector2(randf_range(-8, 8), randf_range(-8, 8))
+		var drift := Vector2(randf_range(-radius, radius), -randf_range(10.0, radius + 8.0))
+		var twm := mote.create_tween()
+		twm.set_parallel(true)
+		twm.tween_property(mote, "global_position", mote.global_position + drift, 0.35).set_ease(Tween.EASE_OUT)
+		twm.tween_property(mote, "scale", Vector2(0.2, 0.2), 0.35)
+		twm.tween_property(mote, "modulate:a", 0.0, 0.35)
+		twm.chain().tween_callback(func() -> void:
+			if is_instance_valid(mote):
+				mote.queue_free())
+
+
 # ─── Mana circle break (overcharged laser fizzle) ────────────────────────────
 
 func circle_break(pos: Vector2) -> void:

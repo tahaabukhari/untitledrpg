@@ -1,9 +1,10 @@
-[gd_scene load_steps=11 format=3 uid="uid://cvfguemr3rmoq"]
+[gd_scene load_steps=12 format=3 uid="uid://cvfguemr3rmoq"]
 
 [ext_resource type="PackedScene" uid="uid://qjw5vpdkfuts" path="res://player.tscn" id="1_50nqk"]
 [ext_resource type="PackedScene" uid="uid://cwjn6gnfcr1oc" path="res://slime.tscn" id="3_avh0l"]
 [ext_resource type="PackedScene" uid="uid://qhcfeyub4mf8" path="res://dieo.tscn" id="3_c1t37"]
 [ext_resource type="PackedScene" uid="uid://ihsv26smf0nv" path="res://whisperer.tscn" id="4_uerwt"]
+[ext_resource type="PackedScene" uid="uid://dabombug0001" path="res://enemies/bombug.tscn" id="5_cud6i"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_yw2jd"]
 size = Vector2(1663.52, 113.762)
@@ -274,6 +275,9 @@ position = Vector2(1184, 533)
 
 [node name="Whisperer" parent="." instance=ExtResource("4_uerwt")]
 position = Vector2(-1263, 535)
+
+[node name="Bombug" parent="." instance=ExtResource("5_cud6i")]
+position = Vector2(3954, 2316)
 
 [editable path="Player"]
 [editable path="Player/TouchControls"]
