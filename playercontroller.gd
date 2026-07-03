@@ -4,11 +4,29 @@ const SPEED = 350.0
 const JUMP_VELOCITY = -400.0
 const ATTACK_TEXT_TIME = 0.5
 
-# Dodge roll (replaces the old reversed evade dash)
+# Dodge — the variant is chosen from MOVEMENT input at press time:
+#   up → evade leap, down → forward slide, else → roll.
+enum DodgeVariant { ROLL, LEAP, SLIDE }
 const ROLL_SPEED := 480.0
 const ROLL_TIME := 0.35
 const ROLL_COOLDOWN := 0.6
 const ROLL_COST := 25
+# Evade leap (dodge while holding up): a hop a bit taller than a jump + i-frames
+const LEAP_VELOCITY := -470.0     # ~JUMP_VELOCITY × 1.18
+const LEAP_DRIFT := 250.0
+const LEAP_IFRAMES := 0.45
+# Slide (dodge while holding down): low forward dash that slides under bipeds
+const SLIDE_SPEED := 560.0
+const SLIDE_TIME := 0.4
+const SLIDE_IFRAMES := 0.32
+const SLIDE_TRIP_REACH := 48.0
+const SLIDE_TRIP_HEIGHT := 42.0
+
+# Tripping / knockdown (bipeds only)
+const TRIP_DURATION := 2.0
+const DOWNED_DMG_MULT := 1.35     # knocked-down opponents take bonus damage
+const DOWNED_RECOVER_IFRAMES := 0.3
+const TRIP_IMMUNITY := 0.5        # brief immunity after standing up
 
 # Parry
 const PARRY_WINDOW := 0.2
@@ -53,11 +71,19 @@ var joystick_vector := Vector2.ZERO
 var facing := 1
 var attack_text_timer := 0.0
 
-# Dodge roll state
+# Dodge state (is_rolling covers the grounded roll AND slide dodges)
 var is_rolling := false
 var roll_timer := 0.0
 var roll_cooldown := 0.0
 var roll_direction := 1
+var dodge_variant: int = DodgeVariant.ROLL
+var _slide_tripped: Array = []       # enemies already tripped by the current slide
+
+# Downed / tripped state (bipedal — the player has legs)
+var is_downed := false
+var downed_timer := 0.0
+var trip_immunity_timer := 0.0
+var trippable := true
 
 # Parry state
 var is_parrying := false
@@ -322,8 +348,8 @@ func _ensure_behavior() -> WeaponBehavior:
 
 
 func _gameplay_blocked() -> bool:
-	## Combat/movement input is ignored while menus are open, dead, or in hitstun.
-	if is_dead or is_hurt:
+	## Combat/movement input is ignored while menus are open, dead, downed, or hurt.
+	if is_dead or is_hurt or is_downed:
 		return true
 	if inventory_ui != null and inventory_ui.is_open:
 		return true
@@ -376,6 +402,22 @@ func _physics_process(delta: float) -> void:
 			is_grabbed = false
 		return
 
+	# Downed (tripped): on our knees, no input, wide open — a real punish window
+	if is_downed:
+		downed_timer -= delta
+		if not is_on_floor():
+			velocity.y += ProjectSettings.get_setting("physics/2d/default_gravity") * delta
+		velocity.x = move_toward(velocity.x, 0, SPEED * delta * 5.0)
+		move_and_slide()
+		if downed_timer <= 0.0:
+			is_downed = false
+			trip_immunity_timer = TRIP_IMMUNITY
+			invuln_timer = maxf(invuln_timer, DOWNED_RECOVER_IFRAMES)
+		return
+
+	if trip_immunity_timer > 0.0:
+		trip_immunity_timer -= delta
+
 	# Thrown: landing hurts (airtime damage of the boss grab-and-throw)
 	if _thrown and is_on_floor():
 		_thrown = false
@@ -411,14 +453,17 @@ func _physics_process(delta: float) -> void:
 	if parry_cooldown_timer > 0.0:
 		parry_cooldown_timer -= delta
 
-	# Dodge roll: roll-driven movement, i-frames handled via invuln_timer
+	# Grounded dodge (roll OR slide): dodge-driven movement, i-frames via invuln_timer
 	if is_rolling:
 		stamina_regen_paused = true
 		roll_timer -= delta
-		velocity.x = roll_direction * ROLL_SPEED
+		var dodge_speed: float = SLIDE_SPEED if dodge_variant == DodgeVariant.SLIDE else ROLL_SPEED
+		velocity.x = roll_direction * dodge_speed
 		if not is_on_floor():
 			velocity.y += ProjectSettings.get_setting("physics/2d/default_gravity") * delta
 		move_and_slide()
+		if dodge_variant == DodgeVariant.SLIDE:
+			_slide_trip_check()
 		if roll_timer <= 0.0:
 			is_rolling = false
 			if player_skin:
@@ -1147,6 +1192,15 @@ func take_damage(amount: int, source_pos: Vector2, knockback: Vector2 = Vector2.
 	## and, on success, negates the hit and staggers the attacker.
 	if is_dead:
 		return false
+	# Downed: no parry/i-frames — you're on the ground taking BONUS damage.
+	if is_downed:
+		var down_dmg: int = maxi(int((amount - (defense + stat_def)) * DOWNED_DMG_MULT), 1)
+		health -= down_dmg
+		Fx.damage_number(global_position, down_dmg, Fx.PLAYER_DAMAGE_COLOR)
+		update_bars()
+		if health <= 0:
+			die()
+		return true
 	if _try_parry(source_pos, attacker):
 		return false
 	if invuln_timer > 0.0:
@@ -1177,6 +1231,43 @@ func take_damage(amount: int, source_pos: Vector2, knockback: Vector2 = Vector2.
 	if health <= 0:
 		die()
 	return true
+
+
+func trip(duration: float = TRIP_DURATION) -> void:
+	## Swept off our feet: knocked to our knees, no control, wide open. Bipeds
+	## only — the player has legs, so this lands (unless we're mid-dodge/i-frame).
+	if is_dead or is_downed or not trippable:
+		return
+	if invuln_timer > 0.0 or is_rolling or trip_immunity_timer > 0.0 or not is_on_floor():
+		return  # dodging / airborne / just-recovered → immune
+	is_downed = true
+	downed_timer = duration
+	is_attacking = false
+	is_parrying = false
+	velocity.x = 0.0
+	if player_skin:
+		if player_skin.has_method("_disable_hitbox"):
+			player_skin._disable_hitbox()
+		if player_skin.has_method("play_knockdown"):
+			player_skin.play_knockdown()
+	Fx.trip_dust(global_position + Vector2(0, 18))
+
+
+func stagger(duration: float = 0.4, push: Vector2 = Vector2.ZERO) -> void:
+	## Briefly reeled (no damage) — e.g. when an enemy PARRIES our attack.
+	## Symmetric to EnemyBase.apply_stagger that our own parry calls.
+	if is_dead or is_downed:
+		return
+	is_hurt = true
+	hurt_timer = maxf(hurt_timer, duration)
+	is_attacking = false
+	if push.length() > 0.0:
+		velocity = push
+	if player_skin:
+		if player_skin.has_method("_disable_hitbox"):
+			player_skin._disable_hitbox()
+		if player_skin.has_method("play_hurt"):
+			player_skin.play_hurt()
 
 
 # ─── Grab-and-throw (boss) ───────────────────────────────────────────────────
@@ -1320,7 +1411,8 @@ func _on_evade_button_pressed() -> void:
 
 
 func _perform_dodge_roll() -> void:
-	## Directional roll with i-frames — replaces the old reversed evade dash.
+	## Directional dodge. The VARIANT is chosen from movement input at press:
+	## holding up → evade leap, holding down → forward slide, else → roll.
 	if _gameplay_blocked() or is_rolling or is_attacking or is_parrying:
 		return
 	if roll_cooldown > 0.0 or stamina < ROLL_COST:
@@ -1328,22 +1420,69 @@ func _perform_dodge_roll() -> void:
 	stamina_regen_paused = true
 	stamina -= ROLL_COST
 	saturation = max(saturation - SAT_ACTION_COST, 0.0)
+	roll_cooldown = ROLL_COOLDOWN
 
+	var mv := joystick_vector
+	if mv.y < -0.4:
+		_start_evade_leap(mv)
+	elif mv.y > 0.4:
+		_start_slide()
+	else:
+		_start_roll(mv)
+
+
+func _start_roll(mv: Vector2) -> void:
+	dodge_variant = DodgeVariant.ROLL
 	# Roll toward movement input; fall back to facing
-	if absf(joystick_vector.x) > 0.2:
-		roll_direction = int(signf(joystick_vector.x))
+	if absf(mv.x) > 0.2:
+		roll_direction = int(signf(mv.x))
 	else:
 		roll_direction = facing
 	facing = roll_direction
 	if player_skin:
 		player_skin.scale.x = abs(player_skin.scale.x) * facing
-
 	is_rolling = true
 	roll_timer = ROLL_TIME
-	roll_cooldown = ROLL_COOLDOWN
 	invuln_timer = maxf(invuln_timer, ROLL_TIME)  # i-frames for the whole roll
 	if player_skin and player_skin.has_method("play_roll"):
 		player_skin.play_roll()
+
+
+func _start_slide() -> void:
+	## Low forward dash in the FACING direction that slides under bipeds (trips).
+	dodge_variant = DodgeVariant.SLIDE
+	roll_direction = facing
+	_slide_tripped.clear()
+	is_rolling = true
+	roll_timer = SLIDE_TIME
+	invuln_timer = maxf(invuln_timer, SLIDE_IFRAMES)  # early invuln — slide through
+	if player_skin and player_skin.has_method("play_slide"):
+		player_skin.play_slide()
+
+
+func _start_evade_leap(mv: Vector2) -> void:
+	## A nimble hop (a touch taller than a jump) with i-frames + a motion streak.
+	## Behaves like a jump (normal air locomotion), so it is NOT a grounded dodge.
+	dodge_variant = DodgeVariant.LEAP
+	var dir := int(signf(mv.x)) if absf(mv.x) > 0.2 else facing
+	velocity.y = LEAP_VELOCITY
+	velocity.x = dir * LEAP_DRIFT
+	jump_count = 1
+	can_double_jump = true
+	invuln_timer = maxf(invuln_timer, LEAP_IFRAMES)
+	Fx.motion_streak(global_position, Vector2(dir, -1.4))
+
+
+func _slide_trip_check() -> void:
+	## While sliding, sweep the legs of any BIPEDAL enemy we pass under.
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or e in _slide_tripped or not e is Node2D:
+			continue
+		var to: Vector2 = e.global_position - global_position
+		if signf(to.x) == float(facing) and absf(to.x) <= SLIDE_TRIP_REACH \
+				and absf(to.y) <= SLIDE_TRIP_HEIGHT and e.has_method("trip"):
+			_slide_tripped.append(e)
+			e.trip(TRIP_DURATION)  # trip() no-ops on non-bipeds
 
 
 func _perform_parry() -> void:

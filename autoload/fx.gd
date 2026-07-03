@@ -432,6 +432,130 @@ func lightning_strike(pos: Vector2, aoe_radius: float = 90.0) -> void:
 				e.queue_free())
 
 
+# ─── Motion streak (evade leap) ──────────────────────────────────────────────
+
+func motion_streak(pos: Vector2, dir: Vector2) -> void:
+	## Speed-lines trailing a burst of movement (the evade leap). A few fading
+	## afterimage streaks opposite the travel direction.
+	var d := dir.normalized()
+	for i in range(5):
+		var line := Line2D.new()
+		line.width = randf_range(1.5, 3.0)
+		line.default_color = Color(0.8, 0.9, 1.0, 0.6)
+		line.z_index = 90
+		var off := Vector2(randf_range(-8, 8), randf_range(-10, 6))
+		line.add_point(off)
+		line.add_point(off - d * randf_range(16, 30))
+		add_child(line)
+		line.global_position = pos
+		var tw := line.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(line, "modulate:a", 0.0, 0.28)
+		tw.tween_property(line, "global_position", pos - d * 14.0, 0.28)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(line):
+				line.queue_free())
+
+
+# ─── Trip dust (knockdown puff) ──────────────────────────────────────────────
+
+func trip_dust(pos: Vector2) -> void:
+	## Low dust kicked up when someone hits the dirt.
+	for i in range(7):
+		var p := ColorRect.new()
+		var sz := randf_range(2.0, 4.0)
+		p.size = Vector2(sz, sz)
+		var g := randf_range(0.5, 0.68)
+		p.color = Color(g, g * 0.92, g * 0.8, randf_range(0.4, 0.7))
+		p.z_index = 60
+		add_child(p)
+		p.global_position = pos + Vector2(randf_range(-10, 10), randf_range(-2, 4))
+		var side := signf(randf_range(-1, 1))
+		var tw := p.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(p, "global_position", p.global_position + Vector2(side * randf_range(14, 30), -randf_range(6, 16)), 0.4)
+		tw.tween_property(p, "modulate:a", 0.0, 0.4)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(p):
+				p.queue_free())
+
+
+# ─── Blood (flesh hit reaction) ──────────────────────────────────────────────
+
+const BLOOD_DARK := Color(0.5, 0.02, 0.04)
+const BLOOD := Color(0.72, 0.05, 0.06)
+const BLOOD_BRIGHT := Color(0.85, 0.12, 0.1)
+
+func blood_spray(pos: Vector2, dir: Vector2, amount: int = 10) -> void:
+	## Punchy, gory hit reaction: a burst of droplets flung along the hit
+	## direction, a couple of arterial streaks, and a lingering ground splatter.
+	## Amount scales the volume so big hits gush.
+	var d := dir.normalized()
+	if d == Vector2.ZERO:
+		d = Vector2(1, -0.3).normalized()
+	var count := clampi(6 + amount / 2, 8, 26)
+
+	# Flung droplets — cone around the hit direction, gravity-arced
+	for i in range(count):
+		var drop := ColorRect.new()
+		var sz := randf_range(2.0, 5.0)
+		drop.size = Vector2(sz, sz)
+		drop.color = [BLOOD, BLOOD_BRIGHT, BLOOD_DARK][i % 3]
+		drop.z_index = 95
+		add_child(drop)
+		drop.global_position = pos + Vector2(randf_range(-3, 3), randf_range(-3, 3))
+		var spread := d.rotated(randf_range(-0.9, 0.9)) * randf_range(30.0, 60.0 + amount * 2.0)
+		var land := drop.global_position + spread + Vector2(0, randf_range(18, 40))  # arc down
+		var tw := drop.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(drop, "global_position", land, randf_range(0.25, 0.45)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(drop, "modulate:a", 0.0, 0.5)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(drop):
+				drop.queue_free())
+
+	# Arterial streaks — a couple of stretched lines bursting outward
+	for i in range(3):
+		var streak := Line2D.new()
+		streak.width = randf_range(2.5, 4.5)
+		streak.default_color = BLOOD
+		streak.z_index = 96
+		streak.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		streak.end_cap_mode = Line2D.LINE_CAP_ROUND
+		var a := d.rotated(randf_range(-0.5, 0.5))
+		streak.add_point(Vector2.ZERO)
+		streak.add_point(a * randf_range(18, 34 + amount))
+		add_child(streak)
+		streak.global_position = pos
+		var tws := streak.create_tween()
+		tws.set_parallel(true)
+		tws.tween_property(streak, "width", 0.0, 0.22)
+		tws.tween_property(streak, "modulate:a", 0.0, 0.24)
+		tws.chain().tween_callback(func() -> void:
+			if is_instance_valid(streak):
+				streak.queue_free())
+
+	# Lingering ground splatter under the hit — a few dark blotches that fade slow
+	for i in range(3):
+		var blot := Polygon2D.new()
+		var pts := PackedVector2Array()
+		var br := randf_range(3.0, 6.0)
+		for j in range(8):
+			var t := TAU * float(j) / 8.0
+			pts.append(Vector2(cos(t), sin(t) * 0.4) * br * randf_range(0.7, 1.2))
+		blot.polygon = pts
+		blot.color = Color(BLOOD_DARK.r, BLOOD_DARK.g, BLOOD_DARK.b, randf_range(0.35, 0.55))
+		blot.z_index = 55
+		add_child(blot)
+		blot.global_position = pos + Vector2(randf_range(-14, 14), randf_range(14, 26))
+		var twb := blot.create_tween()
+		twb.tween_interval(0.6)
+		twb.tween_property(blot, "modulate:a", 0.0, 1.2)
+		twb.tween_callback(func() -> void:
+			if is_instance_valid(blot):
+				blot.queue_free())
+
+
 # ─── Bomb explosion (bombug detonation) ──────────────────────────────────────
 
 func bomb_explosion(pos: Vector2, radius: float = 95.0) -> void:

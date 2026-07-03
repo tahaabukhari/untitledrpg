@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://c0mirrorwar001"]
+
+[ext_resource type="Script" path="res://enemies/mirror_warrior.gd" id="1_mirror"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mirror"]
+size = Vector2(20, 50)
+
+[node name="MirrorWarrior" type="CharacterBody2D"]
+script = ExtResource("1_mirror")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 3)
+shape = SubResource("RectangleShape2D_mirror")

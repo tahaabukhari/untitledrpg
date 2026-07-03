@@ -16,6 +16,14 @@ signal died
 @export var exp_value: float = 10.0        ## EXP granted on death (scale with size/level)
 @export var aggro_range: float = 900.0
 @export var flash_sprite_path: NodePath = ^"Sprite2D"
+## Only creatures that stand on two legs can be TRIPPED (slide-under knockdown).
+## Default false — slimes/bombugs/etc. are immune; set true on humanoids.
+@export var trippable: bool = false
+## Hit reaction kind: "goo" (default flash+number only), "flesh" (adds blood).
+@export var hit_fx: String = "goo"
+
+const TRIP_DOWN_DMG_MULT := 1.35   # a downed enemy takes bonus damage
+const TRIP_DOWN_RECOVER := 0.0
 
 # Collision constants (see project.godot [layer_names])
 const LAYER_ENEMY_HURTBOX := 4    # bit 3 — player attacks mask this
@@ -26,6 +34,8 @@ const MASK_ENVIRONMENT := 1       # bit 1 — terrain (for LOS rays)
 var hp: int
 var is_dead := false
 var stagger_timer := 0.0
+var is_downed := false
+var downed_timer := 0.0
 var player: Node2D = null
 var gravity: float = 980.0
 
@@ -55,6 +65,17 @@ func _enemy_ready() -> void:
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
+	# Downed (tripped): on the ground, no AI, wide open — same freeze as stagger
+	# but longer and reset via _on_tripped. Bipeds only (see trip()).
+	if is_downed:
+		downed_timer -= delta
+		if not is_on_floor():
+			velocity.y += gravity * delta
+		velocity.x = move_toward(velocity.x, 0, 700.0 * delta)
+		move_and_slide()
+		if downed_timer <= 0.0:
+			is_downed = false
+		return
 	if stagger_timer > 0.0:
 		# Staggered: no AI, just knockback physics winding down
 		stagger_timer -= delta
@@ -76,14 +97,40 @@ func _enemy_physics(_delta: float) -> void:
 func take_damage(amount: int, knockback: Vector2 = Vector2.ZERO) -> void:
 	if is_dead:
 		return
-	hp -= amount
+	var dmg := amount
+	if is_downed:
+		dmg = int(amount * TRIP_DOWN_DMG_MULT)  # bonus damage while knocked down
+	hp -= dmg
 	flash_hit()
-	Fx.damage_number(global_position, amount)
-	if knockback.length() > 0:
+	Fx.damage_number(global_position, dmg)
+	if hit_fx == "flesh":
+		var bdir := knockback.normalized() if knockback.length() > 0.0 else Vector2(0, -1)
+		Fx.blood_spray(global_position, bdir, dmg)
+	# Knockback ignored while downed (stay grounded for the punish)
+	if knockback.length() > 0 and not is_downed:
 		velocity = knockback
 	if hp <= 0:
 		hp = 0
 		_die()
+
+
+func trip(duration: float = 2.0) -> void:
+	## Swept off its feet — knocked to its knees for `duration`, wide open.
+	## HARD RULE: only bipedal enemies can be tripped; everything else no-ops.
+	if not trippable or is_dead or is_downed:
+		return
+	is_downed = true
+	downed_timer = duration
+	disable_attack_hitbox()
+	velocity.x = 0.0
+	flash_hit(Color(1.0, 0.9, 0.5))
+	Fx.trip_dust(global_position + Vector2(0, 12))
+	_on_tripped()
+
+
+## Subclass hook — interrupt the attack state machine when tripped.
+func _on_tripped() -> void:
+	pass
 
 
 func flash_hit(color: Color = Color(1, 0.2, 0.2)) -> void:

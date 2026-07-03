@@ -342,6 +342,23 @@ func play_aim_pose() -> void:
 		anim_player.play("staff_aim")
 
 
+func play_slide() -> void:
+	## One-shot low forward slide (down-dodge). Always restarts.
+	current_state = "slide"
+	if anim_player.has_animation("slide"):
+		anim_player.play("slide")
+		anim_player.seek(0.0, true)
+
+
+func play_knockdown() -> void:
+	## Tripped: drop to the knees. Held (looped) for the downed duration; the
+	## controller stops driving it when the player recovers.
+	current_state = "knockdown"
+	if anim_player.has_animation("knockdown"):
+		anim_player.play("knockdown")
+		anim_player.seek(0.0, true)
+
+
 func play_named_attack(anim_name: String) -> void:
 	## Play a specific weapon-registered attack animation (bypasses the combo/
 	## aim pipeline — e.g. the healer's prayer_rub). Emits attack_finished when
@@ -378,6 +395,8 @@ func _build_all_animations() -> void:
 	lib.add_animation("death", _make_death())
 	lib.add_animation("roll", _make_roll())
 	lib.add_animation("parry", _make_parry())
+	lib.add_animation("slide", _make_slide())
+	lib.add_animation("knockdown", _make_knockdown())
 	
 	# Register default fist animations
 	if _fists_animator:
@@ -403,7 +422,7 @@ func _rebuild_locomotion_animations() -> void:
 		anim_player.stop()
 		current_state = ""
 	
-	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall", "hurt", "death", "roll", "parry"]
+	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall", "hurt", "death", "roll", "parry", "slide", "knockdown"]
 	var locomotion_builders = {
 		"idle": _make_idle,
 		"walk": _make_walk,
@@ -415,6 +434,8 @@ func _rebuild_locomotion_animations() -> void:
 		"death": _make_death,
 		"roll": _make_roll,
 		"parry": _make_parry,
+		"slide": _make_slide,
+		"knockdown": _make_knockdown,
 	}
 	
 	for anim_name in locomotion_names:
@@ -981,6 +1002,91 @@ func _make_parry() -> Animation:
 	_rot(a, "RightLegPivot", [[0.0, 0.0], [0.05, 0.12], [0.28, 0.12], [0.45, 0.0]])
 	_pos(a, "LeftLegPivot",  [[0.0, base_lleg], [0.45, base_lleg]])
 	_pos(a, "RightLegPivot", [[0.0, base_rleg], [0.45, base_rleg]])
+
+	return a
+
+
+# ─── SLIDE: low forward baseball-slide (down-dodge) ─────────────────────────
+
+func _make_slide() -> Animation:
+	var a = Animation.new()
+	a.length = 0.4
+	a.loop_mode = Animation.LOOP_NONE
+
+	# Whole body drops low and pitches forward
+	_pos(a, "TorsoPivot", [
+		[0.0,  base_torso + Vector2(1, 3)],
+		[0.1,  base_torso + Vector2(2, 5)],
+		[0.3,  base_torso + Vector2(2, 5)],
+		[0.4,  base_torso + Vector2(0, 1)],
+	])
+	_rot(a, "TorsoPivot", [[0.0, 0.4], [0.3, 0.5], [0.4, 0.1]])
+	_pos(a, "HeadPivot", [
+		[0.0,  base_head + Vector2(2, 3)],
+		[0.3,  base_head + Vector2(3, 4)],
+		[0.4,  base_head],
+	])
+
+	# Lead leg extended forward, trailing leg tucked under
+	_rot(a, "LeftLegPivot",  [[0.0, 1.2], [0.15, 1.4], [0.3, 1.4], [0.4, 0.0]])
+	_rot(a, "RightLegPivot", [[0.0, 0.5], [0.15, 0.7], [0.3, 0.7], [0.4, 0.0]])
+	_pos(a, "LeftLegPivot",  [
+		[0.0, base_lleg + Vector2(4, 1)],
+		[0.15, base_lleg + Vector2(6, 2)],
+		[0.4, base_lleg],
+	])
+	_pos(a, "RightLegPivot", [[0.0, base_rleg + Vector2(-1, 1)], [0.4, base_rleg]])
+
+	# One arm back for balance, one forward
+	_rot(a, "LeftArmPivot",  [[0.0, 0.6 + base_larm_rot], [0.3, 0.7 + base_larm_rot], [0.4, base_larm_rot]])
+	_rot(a, "RightArmPivot", [[0.0, -0.7 + base_rarm_rot], [0.3, -0.8 + base_rarm_rot], [0.4, base_rarm_rot]])
+	_pos(a, "LeftArmPivot",  [[0.0, base_larm + Vector2(2, 2)], [0.4, base_larm]])
+	_pos(a, "RightArmPivot", [[0.0, base_rarm + Vector2(-3, 0)], [0.4, base_rarm]])
+
+	# Sink the whole rig toward the ground
+	var rt := a.add_track(Animation.TYPE_VALUE)
+	a.track_set_path(rt, ".:position:y")
+	a.track_set_interpolation_type(rt, Animation.INTERPOLATION_CUBIC)
+	a.track_insert_key(rt, 0.0, 5.0)
+	a.track_insert_key(rt, 0.12, 7.0)
+	a.track_insert_key(rt, 0.3, 7.0)
+	a.track_insert_key(rt, 0.4, 0.0)
+
+	return a
+
+
+# ─── KNOCKDOWN: tripped onto the knees (looped while downed) ─────────────────
+
+func _make_knockdown() -> Animation:
+	var a = Animation.new()
+	a.length = 0.9
+	a.loop_mode = Animation.LOOP_LINEAR
+
+	# Slumped forward onto the knees, head bowed, arms braced on the ground.
+	# A faint tremble sells "struggling to get up".
+	_pos(a, "TorsoPivot", [
+		[0.0,  base_torso + Vector2(-1, 7)],
+		[0.45, base_torso + Vector2(-1, 7.4)],
+		[0.9,  base_torso + Vector2(-1, 7)],
+	])
+	_rot(a, "TorsoPivot", [[0.0, 0.55], [0.45, 0.6], [0.9, 0.55]])
+	_pos(a, "HeadPivot", [
+		[0.0,  base_head + Vector2(-2, 8)],
+		[0.45, base_head + Vector2(-2, 8.5)],
+		[0.9,  base_head + Vector2(-2, 8)],
+	])
+
+	# Knees down: legs folded under
+	_rot(a, "LeftLegPivot",  [[0.0, 1.5], [0.9, 1.5]])
+	_rot(a, "RightLegPivot", [[0.0, 1.3], [0.9, 1.3]])
+	_pos(a, "LeftLegPivot",  [[0.0, base_lleg + Vector2(0, 3)], [0.9, base_lleg + Vector2(0, 3)]])
+	_pos(a, "RightLegPivot", [[0.0, base_rleg + Vector2(0, 3)], [0.9, base_rleg + Vector2(0, 3)]])
+
+	# Hands planted on the ground in front
+	_rot(a, "LeftArmPivot",  [[0.0, 1.0 + base_larm_rot], [0.9, 1.0 + base_larm_rot]])
+	_rot(a, "RightArmPivot", [[0.0, 0.9 + base_rarm_rot], [0.9, 0.9 + base_rarm_rot]])
+	_pos(a, "LeftArmPivot",  [[0.0, base_larm + Vector2(3, 6)], [0.45, base_larm + Vector2(3, 6.4)], [0.9, base_larm + Vector2(3, 6)]])
+	_pos(a, "RightArmPivot", [[0.0, base_rarm + Vector2(2, 6)], [0.9, base_rarm + Vector2(2, 6)]])
 
 	return a
 

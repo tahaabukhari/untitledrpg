@@ -4,8 +4,10 @@ extends Node2D
 ## Debug controls (see the on-screen hint):
 ##   1-4  switch class at runtime (re-equips the class starter weapon)
 ##   B    spawn the FOURBLADE miniboss
+##   M    spawn a MIRROR WARRIOR duel partner
 
 const BOSS_SCENE := preload("res://enemies/boss_fourblade.tscn")
+const MIRROR_SCENE := preload("res://enemies/mirror_warrior.tscn")
 
 @onready var player: CharacterBody2D = $Player
 
@@ -34,6 +36,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		player.apply_class("Healer")
 	elif event.is_action_pressed("dbg_spawn_boss"):
 		spawn_boss()
+	elif event.is_action_pressed("dbg_spawn_mirror"):
+		spawn_mirror()
+
+
+func spawn_mirror() -> void:
+	var mirror := MIRROR_SCENE.instantiate()
+	add_child(mirror)
+	mirror.global_position = player.global_position + Vector2(280, -40)
+	Fx.parry_spark(mirror.global_position)
 
 
 func spawn_boss() -> void:
@@ -53,7 +64,7 @@ func _build_hint_ui() -> void:
 	layer.layer = 5
 	add_child(layer)
 	var hint := Label.new()
-	hint.text = "[1-4] CLASS   [B] SPAWN BOSS   [HOLD ATK] CHARGE   [SHIFT] DODGE   [K] PARRY"
+	hint.text = "[1-4] CLASS   [B] BOSS   [M] MIRROR   [HOLD ATK] CHARGE   [SHIFT+DIR] DODGE   [K] PARRY"
 	if pixel_font:
 		hint.add_theme_font_override("font", pixel_font)
 	hint.add_theme_font_size_override("font_size", 8)

@@ -1,0 +1,81 @@
+[gd_scene load_steps=11 format=3 uid="uid://c0mirrorskin01"]
+
+[ext_resource type="Script" path="res://player_animator.gd" id="1_anim"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-torso-base.png" id="2_torso"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-head-base.png" id="3_head"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-face-base.png" id="4_face"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-hair-base.png" id="5_hair"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-lefthand-base.png" id="6_lhand"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-righthand-base.png" id="7_rhand"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-leftleg-base.png" id="8_lleg"]
+[ext_resource type="Texture2D" path="res://sprites/player/male/male-rightleg-base.png" id="9_rleg"]
+
+[node name="Skin" type="Node2D"]
+scale = Vector2(2, 2)
+script = ExtResource("1_anim")
+
+[node name="AnimPlayer" type="AnimationPlayer" parent="."]
+
+[node name="LeftLegPivot" type="Node2D" parent="."]
+position = Vector2(-1, 4)
+
+[node name="Sprite" type="Sprite2D" parent="LeftLegPivot"]
+z_index = -2
+position = Vector2(1, -4.5)
+texture = ExtResource("8_lleg")
+
+[node name="RightLegPivot" type="Node2D" parent="."]
+position = Vector2(0, 4)
+
+[node name="Sprite" type="Sprite2D" parent="RightLegPivot"]
+z_index = -2
+position = Vector2(0, -4.5)
+texture = ExtResource("9_rleg")
+
+[node name="TorsoPivot" type="Node2D" parent="."]
+position = Vector2(0, -0.5)
+
+[node name="Sprite" type="Sprite2D" parent="TorsoPivot"]
+texture = ExtResource("2_torso")
+
+[node name="RightArmPivot" type="Node2D" parent="."]
+position = Vector2(-6, -4.5)
+
+[node name="Sprite" type="Sprite2D" parent="RightArmPivot"]
+z_index = 2
+position = Vector2(6, 4)
+texture = ExtResource("7_rhand")
+
+[node name="LeftArmPivot" type="Node2D" parent="."]
+position = Vector2(6, -4.5)
+
+[node name="Sprite" type="Sprite2D" parent="LeftArmPivot"]
+z_index = 2
+position = Vector2(-6, 4)
+texture = ExtResource("6_lhand")
+
+[node name="WeaponSprite" type="Sprite2D" parent="LeftArmPivot"]
+visible = false
+z_index = 3
+
+[node name="HeadPivot" type="Node2D" parent="."]
+position = Vector2(0, -7.5)
+
+[node name="Sprite" type="Sprite2D" parent="HeadPivot"]
+z_index = 2
+position = Vector2(0, 7)
+texture = ExtResource("3_head")
+
+[node name="FacePivot" type="Node2D" parent="HeadPivot"]
+
+[node name="Sprite" type="Sprite2D" parent="HeadPivot/FacePivot"]
+z_index = 3
+position = Vector2(0, 7)
+texture = ExtResource("4_face")
+
+[node name="HairPivot" type="Node2D" parent="HeadPivot"]
+
+[node name="Sprite" type="Sprite2D" parent="HeadPivot/HairPivot"]
+z_index = 4
+position = Vector2(0, 7)
+texture = ExtResource("5_hair")
