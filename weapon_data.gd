@@ -4,6 +4,9 @@ class_name WeaponData
 ## animation set, and special attack properties.
 
 @export_group("Identity")
+## Stable catalog id used by ItemDB / save-load. Leave empty to derive it from
+## the .tres filename (e.g. starter_sword.tres → &"starter_sword").
+@export var id: StringName = &""
 @export var weapon_name: String = "Fists"
 @export var weapon_type: String = "Fists" # e.g. "Sword", "Staff", "Fists"
 @export var weapon_description: String = "Your bare fists."

@@ -176,11 +176,9 @@ func _ready():
 	mana = max_mana
 
 	# Auto-equip the class starter weapon
-	var starter_path: String = Global.get_starter_weapon_path()
-	if starter_path != "":
-		var starter: WeaponData = load(starter_path)
-		if starter:
-			_on_weapon_equipped(starter)
+	var starter: WeaponData = Global.get_starter_weapon()
+	if starter:
+		_on_weapon_equipped(starter)
 
 	# Apply character customization (hair/skin/outfit tints + hero name)
 	_apply_customization()
@@ -1018,11 +1016,9 @@ func apply_class(cls: String) -> void:
 	defense = stats["def"]
 	max_mana = stats["mana"] * 10
 	mana = max_mana
-	var starter_path: String = Global.get_starter_weapon_path()
-	if starter_path != "":
-		var starter: WeaponData = load(starter_path)
-		if starter:
-			_on_weapon_equipped(starter)
+	var starter: WeaponData = Global.get_starter_weapon()
+	if starter:
+		_on_weapon_equipped(starter)
 	attack_label.text = cls.to_upper()
 	attack_label.visible = true
 	attack_text_timer = ATTACK_TEXT_TIME * 2

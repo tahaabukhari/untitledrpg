@@ -19,6 +19,7 @@ config/icon="res://icon.png"
 
 Global="*res://global.gd"
 Fx="*res://autoload/fx.gd"
+ItemDB="*res://autoload/item_db.gd"
 
 [display]
 

@@ -500,11 +500,11 @@ func _add_starting_items() -> void:
 	match cls:
 		"Mage":
 			# The Arcane Conduit (beam staff) — equip it to wield the charged laser
-			var beam_staff = load("res://weapons/mage_beam_staff.tres")
+			var beam_staff = ItemDB.get_item(&"mage_beam_staff")
 			if beam_staff:
 				add_item(beam_staff)
 		"Warrior":
-			var sword = load("res://weapons/starter_sword.tres")
+			var sword = ItemDB.get_item(&"starter_sword")
 			if sword:
 				add_item(sword)
 		_:

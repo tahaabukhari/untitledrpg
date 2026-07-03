@@ -76,17 +76,27 @@ const OUTFIT_COLORS: Array[Color] = [
 	Color(0.85, 0.75, 0.6),       # linen
 ]
 
-# starter weapon auto-equipped on spawn per class
+# starter weapon auto-equipped on spawn per class — catalog ids (see ItemDB)
 var class_starter_weapon: Dictionary = {
-	"Warrior": "res://weapons/starter_sword.tres",
-	"Ranger": "res://weapons/ranger_bow.tres",
-	"Mage": "res://weapons/starter_staff.tres",
-	"Healer": "res://weapons/healer_wand.tres",
+	"Warrior": &"starter_sword",
+	"Ranger": &"ranger_bow",
+	"Mage": &"starter_staff",
+	"Healer": &"healer_wand",
 }
 
 
+func get_starter_weapon() -> WeaponData:
+	## Resolve the current class's starter weapon through the item catalog.
+	var wid: StringName = class_starter_weapon.get(current_class, &"")
+	if wid == &"":
+		return null
+	return ItemDB.get_item(wid)
+
+
 func get_starter_weapon_path() -> String:
-	return class_starter_weapon.get(current_class, "")
+	## Deprecated shim (kept for callers/tests that still want a path).
+	var w := get_starter_weapon()
+	return w.resource_path if w else ""
 
 # getter for convenience
 func get_current_class_stats() -> Dictionary:
