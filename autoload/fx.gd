@@ -112,6 +112,113 @@ func swing_arc(origin: Vector2, dir: float) -> void:
 				p.queue_free())
 
 
+# ─── Beam (mage laser) ───────────────────────────────────────────────────────
+
+func beam(start: Vector2, end: Vector2, width: float,
+		core_color: Color = Color(0.75, 0.9, 1.0, 1.0),
+		glow_color: Color = Color(0.35, 0.55, 1.0, 0.55)) -> void:
+	## Bright core + soft glow hitscan beam, persists briefly then collapses.
+	var glow := Line2D.new()
+	glow.width = width * 3.2
+	glow.default_color = glow_color
+	glow.z_index = 108
+	glow.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	glow.end_cap_mode = Line2D.LINE_CAP_ROUND
+	glow.add_point(Vector2.ZERO)
+	glow.add_point(end - start)
+	add_child(glow)
+	glow.global_position = start
+
+	var core := Line2D.new()
+	core.width = width
+	core.default_color = core_color
+	core.z_index = 109
+	core.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	core.end_cap_mode = Line2D.LINE_CAP_ROUND
+	core.add_point(Vector2.ZERO)
+	core.add_point(end - start)
+	add_child(core)
+	core.global_position = start
+
+	# Muzzle flash ring at the origin
+	var flash := Line2D.new()
+	flash.width = 3.0
+	flash.default_color = Color(core_color, 0.9)
+	flash.z_index = 110
+	flash.closed = true
+	for i in range(13):
+		var t := TAU * float(i) / 12.0
+		flash.add_point(Vector2(cos(t), sin(t)) * width * 0.9)
+	add_child(flash)
+	flash.global_position = start
+
+	# Impact sparks at the end point
+	var dir := (end - start).normalized()
+	for i in range(6):
+		var p := ColorRect.new()
+		p.size = Vector2(3, 3)
+		p.color = core_color
+		p.z_index = 110
+		add_child(p)
+		p.global_position = end + Vector2(randf_range(-4, 4), randf_range(-4, 4))
+		var burst := (-dir).rotated(randf_range(-0.9, 0.9)) * randf_range(20, 55)
+		var twp := p.create_tween()
+		twp.set_parallel(true)
+		twp.tween_property(p, "global_position", p.global_position + burst, 0.25)
+		twp.tween_property(p, "modulate:a", 0.0, 0.25)
+		twp.chain().tween_callback(func() -> void:
+			if is_instance_valid(p):
+				p.queue_free())
+
+	# Beam holds ~0.12s, then collapses/fades
+	var tw := create_tween()
+	tw.tween_interval(0.12)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(core):
+			var tc := core.create_tween()
+			tc.set_parallel(true)
+			tc.tween_property(core, "width", 0.0, 0.12)
+			tc.tween_property(core, "modulate:a", 0.0, 0.14)
+			tc.chain().tween_callback(func() -> void:
+				if is_instance_valid(core):
+					core.queue_free())
+		if is_instance_valid(glow):
+			var tg := glow.create_tween()
+			tg.set_parallel(true)
+			tg.tween_property(glow, "width", 0.0, 0.16)
+			tg.tween_property(glow, "modulate:a", 0.0, 0.18)
+			tg.chain().tween_callback(func() -> void:
+				if is_instance_valid(glow):
+					glow.queue_free())
+		if is_instance_valid(flash):
+			var tf := flash.create_tween()
+			tf.set_parallel(true)
+			tf.tween_property(flash, "scale", Vector2(2.2, 2.2), 0.15)
+			tf.tween_property(flash, "modulate:a", 0.0, 0.15)
+			tf.chain().tween_callback(func() -> void:
+				if is_instance_valid(flash):
+					flash.queue_free()))
+
+
+# ─── Heal burst (healer channel) ─────────────────────────────────────────────
+
+func heal_burst(pos: Vector2) -> void:
+	for i in range(8):
+		var p := ColorRect.new()
+		p.size = Vector2(3, 3)
+		p.color = Color(0.4, 1.0, 0.5, 0.95)
+		p.z_index = 105
+		add_child(p)
+		p.global_position = pos + Vector2(randf_range(-12, 12), randf_range(-4, 10))
+		var tw := p.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(p, "global_position:y", p.global_position.y - randf_range(22, 40), 0.6).set_ease(Tween.EASE_OUT)
+		tw.tween_property(p, "modulate:a", 0.0, 0.6)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(p):
+				p.queue_free())
+
+
 # ─── Parry spark (perfect-parry deflect burst) ───────────────────────────────
 
 func parry_spark(pos: Vector2) -> void:

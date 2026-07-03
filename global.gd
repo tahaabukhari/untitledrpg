@@ -36,6 +36,18 @@ var class_data: Dictionary = {
 # currently selected class string
 var current_class: String = "Warrior" # Default
 
+# starter weapon auto-equipped on spawn per class
+var class_starter_weapon: Dictionary = {
+	"Warrior": "res://weapons/starter_sword.tres",
+	"Ranger": "res://weapons/ranger_bow.tres",
+	"Mage": "res://weapons/starter_staff.tres",
+	"Healer": "res://weapons/healer_wand.tres",
+}
+
+
+func get_starter_weapon_path() -> String:
+	return class_starter_weapon.get(current_class, "")
+
 # getter for convenience
 func get_current_class_stats() -> Dictionary:
 	if class_data.has(current_class):

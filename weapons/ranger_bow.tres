@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
+[ext_resource type="Script" path="res://weapons/animators/projectile_weapon_animator.gd" id="2_animator"]
+
+[resource]
+script = ExtResource("1_script")
+weapon_name = "Starter Bow"
+weapon_type = "Bow"
+weapon_description = "A flexible shortbow of yew. Looses arrows toward your aim - keep your distance and let fly."
+animator_script = ExtResource("2_animator")
+attack_style = "ranged"
+atk_min = 5
+atk_max = 9
+attack_cooldown = 0.3
+stamina_cost = 1.0
+projectile_speed = 780.0
+charged_style = "melee"
+charged_damage = 20
+charged_knockback = 0.0
+charged_stamina_cost = 18.0
+charge_time = 0.9
+attack_right_anim = "bow_shot"
+attack_left_anim = "bow_shot"
+charged_anim = "bow_shot_charged"

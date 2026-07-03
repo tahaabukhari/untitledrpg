@@ -992,6 +992,13 @@ func _trigger_thrust_dash() -> void:
 		player_node.trigger_weapon_dash(700.0)
 
 
+func _fire_projectile(charged: bool = false) -> void:
+	## Called by bow animation method tracks at the loose moment.
+	var player_node = get_parent()
+	if player_node and player_node.has_method("fire_projectile"):
+		player_node.fire_projectile(charged)
+
+
 # ─── Track Helpers ───────────────────────────────────────────────────────────
 
 func _pos(anim: Animation, node_name: String, keys: Array) -> void:

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapon_data.gd" id="1_script"]
+[ext_resource type="Script" path="res://weapons/animators/wand_animator.gd" id="2_animator"]
+
+[resource]
+script = ExtResource("1_script")
+weapon_name = "Healer Wand"
+weapon_type = "Wand"
+weapon_description = "A slender wand crowned with a living emerald. Its charged blessing knits wounds closed."
+animator_script = ExtResource("2_animator")
+attack_style = "melee"
+atk_min = 2
+atk_max = 5
+attack_cooldown = 0.15
+stamina_cost = 0.0
+charged_style = "heal"
+charged_damage = 8
+charged_knockback = 120.0
+charged_stamina_cost = 5.0
+charge_time = 1.0
+heal_amount = 30
+heal_mana_cost = 25.0
+attack_right_anim = "wand_flick_r"
+attack_left_anim = "wand_flick_l"
+charged_anim = "wand_heal"
