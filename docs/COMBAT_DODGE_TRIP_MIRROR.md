@@ -232,6 +232,20 @@ I'll **build in the order you specify** — this is just the dependency-sane def
 
 ---
 
+## 7.5 LOCKED DECISIONS (2026 — build to these)
+
+- **Variant selects from MOVEMENT input**, not aim: read `joystick_vector` at
+  dodge press. `y < -0.4` → **leap**, `y > 0.4` → **slide**, else → **roll**.
+- **Slide goes in the FACING direction** (not the move vector).
+- **Downed takes BONUS damage** (`DOWNED_DMG_MULT`, no hurt-i-frames while down —
+  the knockdown is a real punish window).
+- **Bipedal only** (§3.0): trippable = player + Mirror Warrior; everything else
+  immune, including whisperer + boss.
+- **Mirror = SWORD only**, but must **trip the player, parry, and attack like the
+  player**. Other classes/weapons mirrored later.
+- **Blood = punchy & gory**, and **only the Mirror bleeds for now** (routed via
+  `hit_fx` so anything else — incl. the player — opts in with one flag later).
+
 ## 8. Open questions (steer me)
 
 1. **Dodge variant mapping** — up=leap / down=slide / side=roll as above? Or map
