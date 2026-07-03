@@ -11,6 +11,13 @@ func _ready():
 	await get_tree().process_frame
 	_play_intro_animation()
 
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Debug quick-launch: B jumps straight into the boss arena
+	# (class auto-assigned; switch with 1-4 inside)
+	if event.is_action_pressed("dbg_spawn_boss"):
+		get_tree().change_scene_to_file("res://boss_arena.tscn")
+
 func _build_ui():
 	# === Background ===
 	var bg = ColorRect.new()

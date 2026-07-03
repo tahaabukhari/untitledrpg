@@ -99,7 +99,12 @@ func _get_pivots() -> Dictionary:
 func equip_weapon_visual(weapon: WeaponData) -> void:
 	has_weapon_equipped = true
 	equipped_weapon = weapon
-	
+
+	# CRASH GUARD: never mutate the animation library while the player is
+	# evaluating one of its animations — stale track caches segfault (4.3).
+	anim_player.stop()
+	current_state = ""
+
 	# Remove old weapon animations from the library
 	_unregister_weapon_animations()
 	
@@ -153,11 +158,15 @@ func equip_weapon_visual(weapon: WeaponData) -> void:
 func unequip_weapon_visual() -> void:
 	has_weapon_equipped = false
 	equipped_weapon = null
-	
+
+	# CRASH GUARD: stop playback before mutating the library (see equip)
+	anim_player.stop()
+	current_state = ""
+
 	# Teardown current weapon visuals
 	if _active_animator:
 		_active_animator.teardown_visual(weapon_sprite, _get_pivots())
-	
+
 	# Remove weapon-specific animations
 	_unregister_weapon_animations()
 	
@@ -361,6 +370,13 @@ func _rebuild_locomotion_animations() -> void:
 	var lib = anim_player.get_animation_library("")
 	if not lib:
 		return
+
+	# CRASH GUARD: replacing an animation out from under an active playback
+	# leaves stale track caches (random segfault). Stop first; the controller's
+	# state machine re-plays the right locomotion next frame.
+	if anim_player.is_playing():
+		anim_player.stop()
+		current_state = ""
 	
 	var locomotion_names = ["idle", "walk", "run", "jump", "fall", "long_fall", "hurt", "death", "roll", "parry"]
 	var locomotion_builders = {

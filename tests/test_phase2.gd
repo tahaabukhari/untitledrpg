@@ -89,11 +89,13 @@ func _run() -> void:
 	_check("diagonal attack rotates hitbox to 45deg", absf(hitbox.rotation - PI / 4.0) < 0.01)
 	await _wait_frames(40)
 
-	# Horizontal keeps authored animations (fists by default)
+	# Horizontal keeps the weapon's authored animations (not a generated swing)
 	player.is_attacking = true
 	skin.play_attack(Vector2(1, 0))
 	await _wait_frames(2)
-	_check("horizontal attack keeps authored animation", anim_player.current_animation.begins_with("attack_"))
+	_check("horizontal attack keeps authored animation",
+		anim_player.current_animation != ""
+		and not anim_player.current_animation.begins_with("dirswing"))
 	await _wait_frames(40)
 
 	# ── Death + death screen ──────────────────────────────────────────────

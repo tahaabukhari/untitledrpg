@@ -799,6 +799,31 @@ func _update_charge_telegraph() -> void:
 		_charge_orb = null
 
 
+# ─── Class switching (boss arena debug + respawn reuse) ─────────────────────
+
+func apply_class(cls: String) -> void:
+	## Re-applies class stats and equips the class starter weapon at runtime.
+	Global.set_class(cls)
+	current_class = cls
+	var stats = Global.get_current_class_stats()
+	max_health = stats["hp"] * 10
+	health = max_health
+	max_stamina = stats["sta"] * 10
+	stamina = max_stamina
+	defense = stats["def"]
+	max_mana = stats["mana"] * 10
+	mana = max_mana
+	var starter_path: String = Global.get_starter_weapon_path()
+	if starter_path != "":
+		var starter: WeaponData = load(starter_path)
+		if starter:
+			_on_weapon_equipped(starter)
+	attack_label.text = cls.to_upper()
+	attack_label.visible = true
+	attack_text_timer = ATTACK_TEXT_TIME * 2
+	update_bars()
+
+
 # ─── Weapon Equipping ────────────────────────────────────────────────────────
 
 const DEFAULT_WEAPON: WeaponData = preload("res://weapons/weapon_fists.tres")
