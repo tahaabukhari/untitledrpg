@@ -52,6 +52,22 @@ func _run() -> void:
 	_check("mirror is bipedal (trippable)", mirror.trippable)
 	_check("mirror bleeds (flesh hit_fx)", mirror.hit_fx == "flesh")
 
+	# ── Weapon-aware stance: defensive vs sword, aggressive vs ranged ─────
+	var db: Node = root.get_node("/root/ItemDB")
+	player._on_weapon_equipped(db.get_item(&"starter_sword"))
+	await _wait_frames(2)
+	mirror._aggressive = mirror._player_ranged()
+	_check("plays DEFENSIVE vs a sword", not mirror._aggressive)
+	player._on_weapon_equipped(db.get_item(&"ranger_bow"))
+	await _wait_frames(2)
+	_check("rushes (aggressive) vs a bow", mirror._player_ranged())
+	player._on_weapon_equipped(db.get_item(&"starter_staff"))
+	await _wait_frames(2)
+	_check("rushes (aggressive) vs a staff", mirror._player_ranged())
+	# Back to the sword for the rest of the duel checks
+	player._on_weapon_equipped(db.get_item(&"starter_sword"))
+	await _wait_frames(2)
+
 	# ── Blood on hit ──────────────────────────────────────────────────────
 	var fx: Node = root.get_node("Fx")
 	var fx0: int = fx.get_child_count()

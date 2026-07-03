@@ -33,6 +33,9 @@ var _hitbox_live := false
 var _face := 1
 var _skin: Node2D = null
 var _t := 0.0
+# Stance reads the player's weapon: melee (sword) → play DEFENSIVE (hang back,
+# parry more); ranged (bow/staff) → play AGGRESSIVE (rush in, press the attack).
+var _aggressive := false
 
 
 func _enemy_ready() -> void:
@@ -94,12 +97,16 @@ func _enemy_physics(delta: float) -> void:
 	mstate_timer -= delta
 
 	_face_player()
+	_aggressive = _player_ranged()
 
-	# Reactive defense: read a telegraphed player attack and parry or dodge
+	# Reactive defense: read a telegraphed player attack and parry or dodge.
+	# Against a sword we lean hard on parrying; against a caster we mostly
+	# dodge and keep closing.
 	if react_cd <= 0.0 and _player_attacking() and _dist() < react_range \
 			and mstate in [MState.IDLE, MState.APPROACH]:
 		react_cd = 1.1
-		if randf() < parry_chance:
+		var pchance: float = 0.2 if _aggressive else 0.7
+		if randf() < pchance:
 			_enter_parry()
 		else:
 			_enter_dodge()
@@ -130,16 +137,22 @@ func _enemy_physics(delta: float) -> void:
 func _process_approach(delta: float) -> void:
 	var d := _dist()
 	if d < attack_range and action_cd <= 0.0:
-		# In range: slide-to-trip (only if it can afford a knockdown) or swing
-		if randf() < slide_chance and _player_grounded() and stamina >= SLIDE_KNOCKDOWN_STAMINA:
+		# In range: slide-to-trip (only if it can afford a knockdown) or swing.
+		# Aggressive stance slides/attacks more eagerly.
+		var slide_pref: float = 0.45 if _aggressive else 0.2
+		if randf() < slide_pref and _player_grounded() and stamina >= SLIDE_KNOCKDOWN_STAMINA:
 			_enter_slide()
 		else:
 			_enter_attack()
 		return
 	if _skin and _skin.has_method("play_state"):
 		_skin.play_state("run" if d > attack_range else "idle")
-	if d > attack_range * 0.9:
-		velocity.x = _face * move_speed
+	# Aggressive: rush in fast and close all the way. Defensive: advance at
+	# normal pace but hold a step outside melee, waiting to punish.
+	var spd: float = move_speed * (1.7 if _aggressive else 1.0)
+	var hold_dist: float = attack_range * (0.85 if _aggressive else 1.05)
+	if d > hold_dist:
+		velocity.x = _face * spd
 	else:
 		velocity.x = move_toward(velocity.x, 0, 700 * delta)
 
@@ -147,7 +160,7 @@ func _process_approach(delta: float) -> void:
 func _enter_attack() -> void:
 	mstate = MState.ATTACK
 	mstate_timer = 0.6
-	action_cd = 0.9
+	action_cd = 0.5 if _aggressive else 1.1  # press the attack vs. a caster
 	_attack_elapsed = 0.0
 	_hitbox_live = false
 	velocity.x = 0.0
@@ -273,6 +286,17 @@ func _player_in_front() -> bool:
 
 func _player_attacking() -> bool:
 	return player and is_instance_valid(player) and player.get("is_attacking")
+
+
+func _player_ranged() -> bool:
+	## True when the player wields a bow or staff (fight-from-range weapons) —
+	## the mirror rushes those down. A sword makes it play defensively.
+	if not player or not is_instance_valid(player):
+		return false
+	var w = player.get("equipped_weapon")
+	if w == null:
+		return false
+	return w.weapon_type == "Bow" or w.weapon_type == "Staff"
 
 
 func _player_grounded() -> bool:
