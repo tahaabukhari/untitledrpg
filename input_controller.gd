@@ -17,7 +17,7 @@ signal dodge_pressed
 signal parry_pressed
 signal interact_pressed
 signal attack_pressed
-signal attack_released(charge_level: float)
+signal attack_released(charge_level: float, hold_time: float)
 signal inventory_toggle_pressed
 signal profile_toggle_pressed
 
@@ -27,8 +27,11 @@ enum ChargeSource { NONE, RING, ACTION }
 var mode: int = Mode.TOUCH
 
 ## Continuous charge state (0.0 .. 1.0). Set charge_time from the equipped weapon.
+## The charge is holdable indefinitely — charge_hold_time keeps counting past
+## full so weapons can react to long holds (mage laser overdrive).
 var charge_time: float = 1.0
 var charge_level: float = 0.0
+var charge_hold_time: float = 0.0
 var is_charging: bool = false
 var _charge_source: int = ChargeSource.NONE
 
@@ -88,7 +91,10 @@ func _process(delta: float) -> void:
 		jump_pressed.emit()
 
 	# Continuous charge accumulation while the attack input is held.
+	# Holdable indefinitely: charge_level caps at 1.0 but charge_hold_time
+	# keeps counting (mage laser overdrive reads it).
 	if is_charging:
+		charge_hold_time += delta
 		charge_level = minf(charge_level + delta / maxf(charge_time, 0.05), 1.0)
 		if _attack_ring and _attack_ring.has_method("set_charge"):
 			_attack_ring.set_charge(charge_level)
@@ -148,6 +154,7 @@ func _begin_charge(source: int) -> void:
 		return
 	is_charging = true
 	charge_level = 0.0
+	charge_hold_time = 0.0
 	_charge_source = source
 	attack_pressed.emit()
 
@@ -158,10 +165,25 @@ func _release_charge() -> void:
 	is_charging = false
 	_charge_source = ChargeSource.NONE
 	var level := charge_level
+	var held := charge_hold_time
 	charge_level = 0.0
+	charge_hold_time = 0.0
 	if _attack_ring and _attack_ring.has_method("set_charge"):
 		_attack_ring.set_charge(0.0)
-	attack_released.emit(level)
+	attack_released.emit(level, held)
+
+
+func cancel_charge() -> void:
+	## Ends the charge WITHOUT firing (mana circle break). The held button is
+	## dead until the player physically releases and presses again.
+	if not is_charging:
+		return
+	is_charging = false
+	_charge_source = ChargeSource.NONE
+	charge_level = 0.0
+	charge_hold_time = 0.0
+	if _attack_ring and _attack_ring.has_method("set_charge"):
+		_attack_ring.set_charge(0.0)
 
 
 func _on_ring_pressed() -> void:

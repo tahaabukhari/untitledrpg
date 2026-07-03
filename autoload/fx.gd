@@ -116,8 +116,13 @@ func swing_arc(origin: Vector2, dir: float) -> void:
 
 func beam(start: Vector2, end: Vector2, width: float,
 		core_color: Color = Color(0.75, 0.9, 1.0, 1.0),
-		glow_color: Color = Color(0.35, 0.55, 1.0, 0.55)) -> void:
+		glow_color: Color = Color(0.35, 0.55, 1.0, 0.55),
+		helix: bool = false, stacks: int = 0) -> void:
 	## Bright core + soft glow hitscan beam, persists briefly then collapses.
+	## `helix` (overdrive) wraps two counter-phased strands around the core and
+	## sheds drifting motes along the line; `stacks` thickens the strands.
+	if helix:
+		_beam_helix(start, end, width, core_color, stacks)
 	var glow := Line2D.new()
 	glow.width = width * 3.2
 	glow.default_color = glow_color
@@ -198,6 +203,106 @@ func beam(start: Vector2, end: Vector2, width: float,
 			tf.chain().tween_callback(func() -> void:
 				if is_instance_valid(flash):
 					flash.queue_free()))
+
+
+func _beam_helix(start: Vector2, end: Vector2, width: float,
+		core_color: Color, stacks: int) -> void:
+	## Two sine strands spiraling around the beam axis + drifting energy motes.
+	var axis := end - start
+	var length := axis.length()
+	if length < 8.0:
+		return
+	var dir := axis / length
+	var perp := Vector2(-dir.y, dir.x)
+	var strand_width := 2.5 + 0.5 * stacks
+	var amplitude := width * 1.4
+	var turns := maxf(length / 90.0, 2.0)  # helix frequency scales with length
+	var samples := int(clampf(length / 14.0, 16, 64))
+
+	for phase in [0.0, PI]:
+		var strand := Line2D.new()
+		strand.width = strand_width
+		strand.default_color = Color(core_color.r, core_color.g * 0.9, 1.0, 0.85)
+		strand.z_index = 110
+		strand.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		strand.end_cap_mode = Line2D.LINE_CAP_ROUND
+		for i in range(samples + 1):
+			var t := float(i) / float(samples)
+			var swing := sin(t * TAU * turns + phase) * amplitude
+			# Taper the helix at both ends so it converges on muzzle/impact
+			var taper := sin(t * PI)
+			strand.add_point(dir * (t * length) + perp * swing * taper)
+		add_child(strand)
+		strand.global_position = start
+		var tw := strand.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(strand, "width", 0.0, 0.28).set_ease(Tween.EASE_IN)
+		tw.tween_property(strand, "modulate:a", 0.0, 0.3)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(strand):
+				strand.queue_free())
+
+	# Drifting energy motes shed along the beam
+	var mote_count := 8 + stacks * 2
+	for i in range(mote_count):
+		var m := ColorRect.new()
+		m.size = Vector2(2, 2)
+		m.color = Color(0.9, 0.8, 1.0, 0.9)
+		m.z_index = 109
+		add_child(m)
+		var t := randf()
+		m.global_position = start + dir * (t * length) + perp * randf_range(-amplitude, amplitude)
+		var drift := perp * randf_range(-24.0, 24.0) + dir * randf_range(-8.0, 8.0)
+		var twm := m.create_tween()
+		twm.set_parallel(true)
+		twm.tween_property(m, "global_position", m.global_position + drift, 0.4)
+		twm.tween_property(m, "modulate:a", 0.0, 0.4)
+		twm.chain().tween_callback(func() -> void:
+			if is_instance_valid(m):
+				m.queue_free())
+
+
+# ─── Mana circle break (overcharged laser fizzle) ────────────────────────────
+
+func circle_break(pos: Vector2) -> void:
+	## The held mana circle shatters: ring fragments spin away + a dull flash.
+	for i in range(10):
+		var ang := TAU * float(i) / 10.0 + randf_range(-0.2, 0.2)
+		var frag := Line2D.new()
+		frag.width = 2.0
+		frag.default_color = Color(0.6, 0.85, 1.0, 0.95)
+		frag.z_index = 110
+		# Small arc fragment of the broken ring
+		for j in range(4):
+			var fa := ang + float(j) * 0.12
+			frag.add_point(Vector2(cos(fa), sin(fa)) * 14.0)
+		add_child(frag)
+		frag.global_position = pos
+		var fly := Vector2(cos(ang), sin(ang)) * randf_range(26.0, 60.0)
+		var tw := frag.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(frag, "global_position", pos + fly, 0.35).set_ease(Tween.EASE_OUT)
+		tw.tween_property(frag, "rotation", randf_range(-2.5, 2.5), 0.35)
+		tw.tween_property(frag, "modulate:a", 0.0, 0.35)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(frag):
+				frag.queue_free())
+
+	# Dull implosion flash (failure reads differently from the parry spark)
+	var flash := ColorRect.new()
+	flash.size = Vector2(26, 26)
+	flash.color = Color(0.5, 0.6, 1.0, 0.5)
+	flash.z_index = 109
+	add_child(flash)
+	flash.global_position = pos - flash.size / 2.0
+	flash.pivot_offset = flash.size / 2.0
+	var twf := flash.create_tween()
+	twf.set_parallel(true)
+	twf.tween_property(flash, "scale", Vector2(0.1, 0.1), 0.25).set_ease(Tween.EASE_IN)
+	twf.tween_property(flash, "modulate:a", 0.0, 0.25)
+	twf.chain().tween_callback(func() -> void:
+		if is_instance_valid(flash):
+			flash.queue_free())
 
 
 # ─── Heal burst (healer channel) ─────────────────────────────────────────────

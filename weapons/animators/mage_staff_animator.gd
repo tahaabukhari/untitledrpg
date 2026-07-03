@@ -9,7 +9,65 @@ class_name MageStaffAnimator
 func get_attack_animations(pivots: Dictionary) -> Dictionary:
 	var anims := super.get_attack_animations(pivots)
 	anims["staff_charged"] = _make_cast(pivots)
+	anims["staff_aim"] = _make_aim_pose(pivots)
 	return anims
+
+
+func _make_aim_pose(pivots: Dictionary) -> Animation:
+	## Battle stance while charging the laser: staff leveled forward like a
+	## rifle, lead hand extended down the shaft, rear hand braced at the chest,
+	## slight crouch. Loops with a subtle breathing sway.
+	var base_torso: Vector2 = pivots.get("base_torso", Vector2(0, 0.5))
+	var base_head: Vector2 = pivots.get("base_head", Vector2(0, -5.5))
+	var base_lleg: Vector2 = pivots.get("base_lleg", Vector2(-1, 4))
+	var base_rleg: Vector2 = pivots.get("base_rleg", Vector2(0, 4))
+
+	var a := Animation.new()
+	a.length = 1.0
+	a.loop_mode = Animation.LOOP_LINEAR
+
+	# Lead (weapon) hand thrust forward along the aim line
+	anim_pos(a, "LeftArmPivot", [
+		[0.0, Vector2(9, -4)],
+		[0.5, Vector2(9, -3.6)],
+		[1.0, Vector2(9, -4)],
+	])
+	anim_rot(a, "LeftArmPivot", [[0.0, -0.15], [1.0, -0.15]])
+
+	# Rear hand braced at the chest, steadying the shaft
+	anim_pos(a, "RightArmPivot", [
+		[0.0, Vector2(2, -3)],
+		[0.5, Vector2(2, -2.6)],
+		[1.0, Vector2(2, -3)],
+	])
+	anim_rot(a, "RightArmPivot", [[0.0, -0.35], [1.0, -0.35]])
+
+	# Staff leveled horizontal, muzzle forward (gun stance)
+	anim_rot(a, "LeftArmPivot/WeaponSprite", [
+		[0.0, deg_to_rad(30)],
+		[1.0, deg_to_rad(30)],
+	])
+
+	# Body: shoulders squared into the shot, slight crouch, breathing bob
+	anim_pos(a, "TorsoPivot", [
+		[0.0, base_torso + Vector2(-1, 1)],
+		[0.5, base_torso + Vector2(-1, 1.5)],
+		[1.0, base_torso + Vector2(-1, 1)],
+	])
+	anim_rot(a, "TorsoPivot", [[0.0, 0.06], [1.0, 0.06]])
+	anim_pos(a, "HeadPivot", [
+		[0.0, base_head + Vector2(0.5, 1)],
+		[0.5, base_head + Vector2(0.5, 1.5)],
+		[1.0, base_head + Vector2(0.5, 1)],
+	])
+
+	# Wide braced stance
+	anim_rot(a, "LeftLegPivot",  [[0.0, -0.14], [1.0, -0.14]])
+	anim_rot(a, "RightLegPivot", [[0.0, 0.14], [1.0, 0.14]])
+	anim_pos(a, "LeftLegPivot",  [[0.0, base_lleg + Vector2(-0.5, 0)], [1.0, base_lleg + Vector2(-0.5, 0)]])
+	anim_pos(a, "RightLegPivot", [[0.0, base_rleg + Vector2(0.5, 0)], [1.0, base_rleg + Vector2(0.5, 0)]])
+
+	return a
 
 
 func _make_cast(pivots: Dictionary) -> Animation:

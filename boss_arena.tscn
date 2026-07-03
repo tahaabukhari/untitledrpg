@@ -1,9 +1,10 @@
-[gd_scene load_steps=7 format=3 uid="uid://c8bossarena01"]
+[gd_scene load_steps=8 format=3 uid="uid://c8bossarena01"]
 
 [ext_resource type="Script" path="res://boss_arena.gd" id="1_arena"]
 [ext_resource type="PackedScene" uid="uid://qjw5vpdkfuts" path="res://player.tscn" id="2_player"]
 [ext_resource type="PackedScene" uid="uid://c6mannequin01" path="res://enemies/mannequin.tscn" id="3_mann"]
 [ext_resource type="PackedScene" uid="uid://qhcfeyub4mf8" path="res://dieo.tscn" id="4_dieo"]
+[ext_resource type="PackedScene" uid="uid://c7fourblade01" path="res://enemies/boss_fourblade.tscn" id="5_4rscf"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(3200, 120)
@@ -21,12 +22,12 @@ position = Vector2(1000, 560)
 shape = SubResource("RectangleShape2D_floor")
 
 [node name="FloorVisual" type="Polygon2D" parent="Floor"]
-polygon = PackedVector2Array(-1600, -60, 1600, -60, 1600, 60, -1600, 60)
 color = Color(0.13, 0.11, 0.16, 1)
+polygon = PackedVector2Array(-1600, -60, 1600, -60, 1600, 60, -1600, 60)
 
 [node name="FloorTrim" type="Polygon2D" parent="Floor"]
-polygon = PackedVector2Array(-1600, -60, 1600, -60, 1600, -52, -1600, -52)
 color = Color(0.3, 0.26, 0.38, 1)
+polygon = PackedVector2Array(-1600, -60, 1600, -60, 1600, -52, -1600, -52)
 
 [node name="WallLeft" type="StaticBody2D" parent="."]
 position = Vector2(-560, 100)
@@ -35,8 +36,8 @@ position = Vector2(-560, 100)
 shape = SubResource("RectangleShape2D_wall")
 
 [node name="WallLeftVisual" type="Polygon2D" parent="WallLeft"]
-polygon = PackedVector2Array(-40, -450, 40, -450, 40, 450, -40, 450)
 color = Color(0.11, 0.09, 0.14, 1)
+polygon = PackedVector2Array(-40, -450, 40, -450, 40, 450, -40, 450)
 
 [node name="WallRight" type="StaticBody2D" parent="."]
 position = Vector2(2560, 100)
@@ -45,23 +46,23 @@ position = Vector2(2560, 100)
 shape = SubResource("RectangleShape2D_wall")
 
 [node name="WallRightVisual" type="Polygon2D" parent="WallRight"]
-polygon = PackedVector2Array(-40, -450, 40, -450, 40, 450, -40, 450)
 color = Color(0.11, 0.09, 0.14, 1)
+polygon = PackedVector2Array(-40, -450, 40, -450, 40, 450, -40, 450)
 
 [node name="PillarA" type="Polygon2D" parent="."]
 position = Vector2(200, 500)
-polygon = PackedVector2Array(-18, -260, 18, -260, 12, 0, -12, 0)
 color = Color(0.1, 0.09, 0.13, 1)
+polygon = PackedVector2Array(-18, -260, 18, -260, 12, 0, -12, 0)
 
 [node name="PillarB" type="Polygon2D" parent="."]
 position = Vector2(1000, 500)
-polygon = PackedVector2Array(-18, -260, 18, -260, 12, 0, -12, 0)
 color = Color(0.1, 0.09, 0.13, 1)
+polygon = PackedVector2Array(-18, -260, 18, -260, 12, 0, -12, 0)
 
 [node name="PillarC" type="Polygon2D" parent="."]
 position = Vector2(1800, 500)
-polygon = PackedVector2Array(-18, -260, 18, -260, 12, 0, -12, 0)
 color = Color(0.1, 0.09, 0.13, 1)
+polygon = PackedVector2Array(-18, -260, 18, -260, 12, 0, -12, 0)
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(500, 420)
@@ -70,4 +71,6 @@ position = Vector2(500, 420)
 position = Vector2(-350, 440)
 
 [node name="DeathScreen" parent="." instance=ExtResource("4_dieo")]
-position = Vector2(0, 0)
+
+[node name="BossFourblade" parent="." instance=ExtResource("5_4rscf")]
+position = Vector2(1476, 373)

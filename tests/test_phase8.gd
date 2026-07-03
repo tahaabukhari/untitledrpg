@@ -45,6 +45,14 @@ func _run() -> void:
 		return
 	_check("class auto-assigned on quick launch", player.current_class != "")
 	_check("mannequin waits off to the side", get_nodes_in_group("enemy").size() >= 1)
+
+	# Determinism: clear any pre-placed boss so it can't interfere with the
+	# input checks below; B will spawn a fresh one.
+	for b in get_nodes_in_group("boss"):
+		b.queue_free()
+	if "boss" in arena:
+		arena.boss = null
+	await process_frame
 	_check("death screen present in arena", get_first_node_in_group("death_screen") != null)
 	_check("player landed on arena floor", player.is_on_floor() or player.velocity.y >= 0)
 
@@ -70,13 +78,13 @@ func _run() -> void:
 	_check("key 1 switches to Warrior with sword", player.current_class == "Warrior"
 		and player.equipped_weapon.weapon_type == "Sword")
 
-	# ── B spawns the boss (once) ──────────────────────────────────────────
+	# ── B ensures exactly one boss (spawns it, or adopts a pre-placed one) ──
 	_key(KEY_B, true)
 	await _wait_frames(2)
 	_key(KEY_B, false)
 	await _wait_frames(5)
 	var boss: Node = get_first_node_in_group("boss")
-	_check("B spawns the FOURBLADE boss", boss != null)
+	_check("B yields a FOURBLADE boss", boss != null)
 	_key(KEY_B, true)
 	await _wait_frames(2)
 	_key(KEY_B, false)

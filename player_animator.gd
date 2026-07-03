@@ -332,6 +332,16 @@ func play_parry() -> void:
 		anim_player.seek(0.0, true)
 
 
+func play_aim_pose() -> void:
+	## Looping battle stance while charging (weapon-provided, e.g. staff_aim).
+	## Silently no-ops for weapons without one.
+	if current_state == "staff_aim":
+		return
+	if anim_player.has_animation("staff_aim"):
+		current_state = "staff_aim"
+		anim_player.play("staff_aim")
+
+
 func play_death() -> void:
 	current_state = "death"
 	if anim_player.has_animation("death"):

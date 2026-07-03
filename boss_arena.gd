@@ -16,6 +16,9 @@ var pixel_font: Font = null
 func _ready() -> void:
 	pixel_font = load("res://fonts/PressStart2P.ttf")
 	_build_hint_ui()
+	# Adopt a boss placed directly in the scene so B doesn't stack a second one
+	if boss == null or not is_instance_valid(boss):
+		boss = get_tree().get_first_node_in_group("boss")
 
 
 func _unhandled_input(event: InputEvent) -> void:

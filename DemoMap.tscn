@@ -1,8 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://cvfguemr3rmoq"]
+[gd_scene load_steps=11 format=3 uid="uid://cvfguemr3rmoq"]
 
 [ext_resource type="PackedScene" uid="uid://qjw5vpdkfuts" path="res://player.tscn" id="1_50nqk"]
 [ext_resource type="PackedScene" uid="uid://cwjn6gnfcr1oc" path="res://slime.tscn" id="3_avh0l"]
 [ext_resource type="PackedScene" uid="uid://qhcfeyub4mf8" path="res://dieo.tscn" id="3_c1t37"]
+[ext_resource type="PackedScene" uid="uid://ihsv26smf0nv" path="res://whisperer.tscn" id="4_uerwt"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_yw2jd"]
 size = Vector2(1663.52, 113.762)
@@ -270,19 +271,9 @@ position = Vector2(1254, 495)
 
 [node name="slime" parent="." instance=ExtResource("3_avh0l")]
 position = Vector2(1184, 533)
-hop_speed = null
-hop_jump_force = null
-hop_cooldown_min = null
-hop_cooldown_max = null
-aggro_speed = null
-aggro_jump_force = null
-aggro_hop_cooldown = null
-aggro_range = null
-aggro_time = null
-attack_distance = null
-patrol_distance = null
-min_scale = null
-max_scale = null
+
+[node name="Whisperer" parent="." instance=ExtResource("4_uerwt")]
+position = Vector2(-1263, 535)
 
 [editable path="Player"]
 [editable path="Player/TouchControls"]
