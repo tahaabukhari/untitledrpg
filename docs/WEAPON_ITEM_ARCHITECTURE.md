@@ -283,17 +283,26 @@ items/
 4. ⬜ **TODO. Sub-resource tuning.** Move laser/heal flat fields into
    `LaserTuning`/`HealTuning`; migrate the 6 `.tres`. (R2)
 5. ⬜ **TODO. Namespace animations** per weapon id. (R3)
-6. ⬜ **TODO. `ItemData` hierarchy + armor/consumables.** Makes the existing
-   inventory slots functional; `_can_drop_data` gates by kind. **Blocked on the
-   flyweight-vs-instance decision (§8).** (R4)
+6. 🟡 **PARTIAL.**
+   - ✅ **6a — unique instances (`ItemInstance`).** `item_instance.gd`: shared
+     `def` (WeaponData template) + per-instance state (uid, durability, affixes)
+     + `to_dict`/`apply_state`. `ItemDB.make_instance`/`instance_from_dict`.
+     Inventory holds instances end to end; player tracks `equipped_instance`;
+     `_on_weapon_equipped` accepts an instance OR a template (auto-wrapped) so
+     combat/tests stayed untouched. `test_itemdb.gd`.
+   - ⬜ **6b — `ItemData` hierarchy (armor/trinket/consumable).** Widen `def`
+     from WeaponData to `ItemData`; make the existing armor/trinket slots
+     functional; `_can_drop_data` gates by kind.
 7. ⬜ **TODO. Modifier/rarity layer** (when a loot system is actually needed). (R7)
 
-> **Current default (revisit at step 6):** items are **flyweight** — `ItemDB`
-> returns shared resource instances. Per-item state (durability/affixes) would
-> layer on top via an instance wrapper without reworking the registry.
+> **DECISION (2026, resolved §8):** items are **unique instances**, not
+> flyweights. DEFINITIONS stay flyweight (one WeaponData per catalog id, shared
+> via `ItemDB.get_item`); each carried/equipped item is a distinct `ItemInstance`
+> minted by `ItemDB.make_instance`, free to hold its own durability/affixes.
 
 Each step is independently testable with the existing headless harness
-(`tests/test_*.gd`): `test_itemdb.gd` and `test_behavior.gd` cover 1–3.
+(`tests/test_*.gd`): `test_itemdb.gd` (registry + instances) and
+`test_behavior.gd` (dispatch) cover 1–3 and 6a.
 
 ---
 
@@ -335,9 +344,8 @@ we're fixing.*
 
 ## 8. Open questions for product/design
 
-- Are weapons **unique instances** (per-item durability/affixes) or **flyweight**
-  shared resources? Decides whether `WeaponData` is duplicated per-inventory-item
-  or referenced. (Affects R7 and save format.)
+- ✅ **RESOLVED — unique instances.** Weapons are unique per drop (`ItemInstance`
+  = shared def + per-instance state); definitions stay flyweight. See §5 / §6a.
 - Dual-wield / offhand semantics — the slot exists; is it a second full weapon, a
   shield (block/parry mod), or a stat trinket?
 - Do consumables share the attack button or get their own hotbar?

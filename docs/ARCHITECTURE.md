@@ -60,7 +60,8 @@ titlescreen.tscn ──START GAME──► class_selection.tscn ──► DemoMa
 | File | Role |
 |---|---|
 | `weapon_data.gd` | `class_name WeaponData` (Resource). `id` (catalog key), stats, `combo_anims`, `animator_script` (visuals), `behavior_script` (charged-attack plugin) + `get_behavior()`; `charged_style`/`attack_style` kept as fallback selectors. |
-| `autoload/item_db.gd` | `ItemDB` autoload — scans `res://weapons/`, maps `id`→resource. `get_item/has_item/all_of_kind/all_ids`. All item discovery routes here (see WEAPON_ITEM_ARCHITECTURE.md). |
+| `autoload/item_db.gd` | `ItemDB` autoload — scans `res://weapons/`, maps `id`→definition. `get_item` (shared def), `make_instance`/`instance_from_dict` (unique `ItemInstance`), `has_item/all_of_kind/all_ids`. All item discovery routes here. |
+| `item_instance.gd` | `class_name ItemInstance` — a UNIQUE runtime item: shared `def` (WeaponData template) + per-instance state (uid/durability/affixes) + `to_dict`/`apply_state`. Inventory + `equipped_instance` hold these; combat reads stats from `.def`. |
 | `weapons/behaviors/*.gd` | `WeaponBehavior` (base = melee) + `laser_behavior`, `heal_behavior`. Own charged-attack dispatch (`on_release`, `wants_charge_stance`); the player forwards charge events here instead of branching on a style enum. |
 | `weapons/animators/weapon_animator.gd` | `class_name WeaponAnimator` (RefCounted) — plugin base. Contract: `setup_visual`, `get_attack_animations`, `get_hold_positions`, `teardown_visual`. **Also hosts `static make_directional_swing(pivots, angle, opts)`** — THE shared angle-parameterized swing builder used by player, mannequin, and boss (see §6). Static track helpers `anim_pos/rot/zidx/method`. |
 | `weapons/animators/fists_animator.gd` | Default/unequip fallback. `attack_right/left`, `uppercut`. |
