@@ -153,6 +153,12 @@ func _build_ui():
 	_add_touch_overlay(arena_btn, _on_arena_pressed)
 	title_elements.append(arena_btn)
 
+	var dungeon_btn := _make_menu_button("DUNGEON STAGE", 12, Vector2(320, 44))
+	dungeon_btn.pressed.connect(_on_dungeon_pressed)
+	vbox.add_child(dungeon_btn)
+	_add_touch_overlay(dungeon_btn, _on_dungeon_pressed)
+	title_elements.append(dungeon_btn)
+
 	# === Spacer bottom ===
 	var spacer_bot = Control.new()
 	spacer_bot.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -241,6 +247,10 @@ func _on_customize_pressed():
 
 func _on_arena_pressed():
 	get_tree().change_scene_to_file("res://boss_arena.tscn")
+
+
+func _on_dungeon_pressed():
+	get_tree().change_scene_to_file("res://dungeon/dungeon_stage_1.tscn")
 
 
 func _make_btn_style(is_hover: bool) -> StyleBoxFlat:

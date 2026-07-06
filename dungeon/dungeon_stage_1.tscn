@@ -1,0 +1,22 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://dungeon/dungeon_stage_1.gd" id="1_stage"]
+[ext_resource type="PackedScene" path="res://player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://dieo.tscn" id="3_dieo"]
+[ext_resource type="Script" path="res://dungeon/dungeon_assembler.gd" id="4_asm"]
+
+[node name="DungeonStage1" type="Node2D"]
+script = ExtResource("1_stage")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.72, 0.78, 0.84, 1)
+
+[node name="DungeonAssembler" type="Node2D" parent="."]
+position = Vector2(0, 520)
+script = ExtResource("4_asm")
+player_path = NodePath("../Player")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(140, 420)
+
+[node name="DeathScreen" parent="." instance=ExtResource("3_dieo")]

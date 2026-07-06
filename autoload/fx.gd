@@ -784,6 +784,64 @@ func heal_burst(pos: Vector2) -> void:
 				p.queue_free())
 
 
+func shatter(pos: Vector2, color: Color = Color(0.74, 0.58, 0.34, 1.0)) -> void:
+	for i in range(9):
+		var frag := Polygon2D.new()
+		frag.polygon = PackedVector2Array([
+			Vector2(-3, -2),
+			Vector2(4, -1),
+			Vector2(2, 3),
+			Vector2(-2, 2),
+		])
+		frag.color = color.darkened(randf_range(0.0, 0.18))
+		frag.z_index = 104
+		add_child(frag)
+		frag.global_position = pos + Vector2(randf_range(-8, 8), randf_range(-8, 4))
+		var fly := Vector2(cos(randf() * TAU), sin(randf() * TAU)) * randf_range(20.0, 58.0)
+		var tw := frag.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(frag, "global_position", frag.global_position + fly, 0.36).set_ease(Tween.EASE_OUT)
+		tw.tween_property(frag, "rotation", randf_range(-3.0, 3.0), 0.36)
+		tw.tween_property(frag, "modulate:a", 0.0, 0.36)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(frag):
+				frag.queue_free())
+	for i in range(5):
+		var dust := ColorRect.new()
+		dust.size = Vector2(4, 4)
+		dust.color = Color(0.64, 0.58, 0.46, 0.65)
+		dust.z_index = 103
+		add_child(dust)
+		dust.global_position = pos + Vector2(randf_range(-10, 10), randf_range(-4, 8))
+		var twd := dust.create_tween()
+		twd.set_parallel(true)
+		twd.tween_property(dust, "global_position", dust.global_position + Vector2(randf_range(-20, 20), randf_range(-22, -10)), 0.28)
+		twd.tween_property(dust, "modulate:a", 0.0, 0.32)
+		twd.chain().tween_callback(func() -> void:
+			if is_instance_valid(dust):
+				dust.queue_free())
+
+
+func splinters(pos: Vector2) -> void:
+	for i in range(8):
+		var line := Line2D.new()
+		line.width = 3.0
+		line.default_color = Color(0.55, 0.36, 0.18, 1.0)
+		line.z_index = 104
+		line.add_point(Vector2.ZERO)
+		line.add_point(Vector2(randf_range(8, 18), randf_range(-2, 2)))
+		add_child(line)
+		line.global_position = pos + Vector2(randf_range(-6, 6), randf_range(-24, 6))
+		line.rotation = randf_range(-PI, PI)
+		var tw := line.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(line, "global_position", line.global_position + Vector2(randf_range(-32, 32), randf_range(-32, 20)), 0.3)
+		tw.tween_property(line, "modulate:a", 0.0, 0.3)
+		tw.chain().tween_callback(func() -> void:
+			if is_instance_valid(line):
+				line.queue_free())
+
+
 # ─── Parry spark (perfect-parry deflect burst) ───────────────────────────────
 
 func parry_spark(pos: Vector2) -> void:

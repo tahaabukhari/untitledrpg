@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://dungeon/breakable.gd" id="1"]
+
+[node name="HeavyDoor" type="StaticBody2D"]
+script = ExtResource("1")
+max_hp = 7
+solid = true
+prop_kind = "heavy_door"
+body_size = Vector2(42, 108)

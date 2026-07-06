@@ -73,7 +73,7 @@ func reflect() -> void:
 
 
 func _on_body_entered(body: Node2D) -> void:
-	if body.is_in_group("enemy") and body.has_method("take_damage"):
+	if (body.is_in_group("enemy") or body.is_in_group("breakable")) and body.has_method("take_damage"):
 		body.take_damage(damage, direction * 180.0 + Vector2(0, -60))
 		Fx.hit_particles(global_position)
 		queue_free()

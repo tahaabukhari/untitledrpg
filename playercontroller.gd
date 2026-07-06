@@ -180,6 +180,7 @@ func _ready():
 	input_ctrl.jump_pressed.connect(_on_jump_input)
 	input_ctrl.dodge_pressed.connect(_on_evade_button_pressed)
 	input_ctrl.parry_pressed.connect(_on_parry_pressed)
+	input_ctrl.interact_pressed.connect(_on_interact_pressed)
 	input_ctrl.attack_released.connect(_on_attack_released)
 	input_ctrl.inventory_toggle_pressed.connect(_on_inv_button_pressed)
 	input_ctrl.profile_toggle_pressed.connect(_toggle_profile)
@@ -333,6 +334,24 @@ func _on_jump_input() -> void:
 
 func _on_parry_pressed() -> void:
 	_perform_parry()
+
+
+func _on_interact_pressed() -> void:
+	if _gameplay_blocked():
+		return
+	var nearest: Node = null
+	var best_dist := 96.0
+	for node in get_tree().get_nodes_in_group("interactable"):
+		if not (node is Node2D):
+			continue
+		if not node.has_method("interact"):
+			continue
+		var dist := global_position.distance_to((node as Node2D).global_position)
+		if dist < best_dist:
+			best_dist = dist
+			nearest = node
+	if nearest:
+		nearest.interact(self)
 
 
 func _on_attack_released(charge_level: float, hold_time: float = 0.0) -> void:
@@ -800,7 +819,7 @@ func fire_laser_beam(charge_level: float, hold_time: float = 0.0) -> void:
 		if hit.is_empty():
 			break
 		var col: Object = hit.collider
-		if col is Node and (col as Node).is_in_group("enemy") and col.has_method("take_damage"):
+		if col is Node and ((col as Node).is_in_group("enemy") or (col as Node).is_in_group("breakable")) and col.has_method("take_damage"):
 			col.take_damage(dmg, aim * 260.0 + Vector2(0, -60))
 			Fx.hit_particles(hit.position, Color(0.7, 0.85, 1.0))
 		excludes.append(hit.rid)
@@ -1389,7 +1408,7 @@ func _show_death_screen() -> void:
 
 
 func _on_attack_hit(body: Node2D) -> void:
-	if body.is_in_group("enemy") and body not in hit_enemies_this_swing:
+	if (body.is_in_group("enemy") or body.is_in_group("breakable")) and body not in hit_enemies_this_swing:
 		hit_enemies_this_swing.append(body)
 		var dmg: int
 		if current_attack_knockback > 0:
