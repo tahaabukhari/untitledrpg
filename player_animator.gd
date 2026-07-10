@@ -144,7 +144,10 @@ func equip_weapon_visual(weapon: WeaponData) -> void:
 	if not _active_animator:
 		# Fallback: no animator script → use fists
 		_active_animator = _fists_animator
-	
+
+	# Hand the animator its resource so it can read per-weapon @export tuning.
+	_active_animator.weapon_data = weapon
+
 	# Reset per-arm swing damping; a weapon's hold may re-damp below. Track the
 	# prior state so we still rebuild locomotion when clearing stale damping.
 	var had_damping := larm_swing_mul != 1.0 or rarm_swing_mul != 1.0

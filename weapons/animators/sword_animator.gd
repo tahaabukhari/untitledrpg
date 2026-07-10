@@ -7,38 +7,51 @@ class_name SwordAnimator
 ## Charged: TWO-HANDED lunging thrust (the back hand comes onto the grip).
 ## Parry: raise the blade across the body into a guard (overrides the generic parry).
 ##
-## All feel/placement lives in the tuning block below — edit these to reshape it.
+## ALL placement/feel is tunable in the Inspector via the "Sword Hold & Visual"
+## group on the weapon's .tres — this script only reads those @export values off
+## weapon_data. Edit starter_sword.tres to reshape the sword.
 
-# ─── Tuning ──────────────────────────────────────────────────────────────────
-# Held in the FORWARD hand (LeftArmPivot); the WeaponSprite is its child, so its
-# rotation is relative to that hand. Rig-local units (pre 2× PlayerSkin scale).
-const BLADE_SCALE     := 0.42               # short-sword size (was 0.5, two-handed)
-const HILT_TO_HAND    := 4.0                # px the grip pokes past the sprite bottom
-const HAND_GRIP       := Vector2(7, -3)     # forward-hand position at rest
-const HAND_GRIP_ROT   := -0.15              # forward-hand tilt at rest (rad)
-const WEAPON_POS      := Vector2(-5, 3)     # sprite pos relative to LeftArmPivot → in the hand
-const BLADE_REST_DEG  := -45.0              # blade angle at rest (up & forward)
-const MOVE_SWING_MUL  := 0.35               # damp the sword arm while walking/running (0..1)
-const BACK_HAND       := Vector2(-6, -4.5)  # free back-hand rest position
-
-# Attack-shape knobs (radians unless noted)
-const CHARGE_BLADE_DEG := 60.0              # blade leveled forward during the thrust
-const PARRY_BLADE_DEG  := -88.0             # blade near-vertical in the guard pose
-const CHARGE_OFFHAND   := Vector2(9, -1)    # where the back hand grips during the thrust
+# Fallback defaults if weapon_data is somehow missing (should not happen in play).
+const _DEF_SCALE := 0.42
+const _DEF_HILT := 4.0
+const _DEF_WEAPON_POS := Vector2(-5, 3)
+const _DEF_REST_DEG := -45.0
+const _DEF_GRIP := Vector2(7, -3)
+const _DEF_GRIP_ROT := -0.15
+const _DEF_BACK := Vector2(-6, -4.5)
+const _DEF_SWING_MUL := 0.35
+const _DEF_CHARGE_DEG := 60.0
+const _DEF_CHARGE_OFFHAND := Vector2(9, -1)
+const _DEF_PARRY_DEG := -88.0
 
 
-func setup_visual(weapon_sprite: Sprite2D, weapon_data: WeaponData, pivots: Dictionary) -> void:
-	if not weapon_sprite or not weapon_data.weapon_icon:
+# ─── Tuning accessors (read from weapon_data, fall back to defaults) ─────────
+
+func _scale() -> float:        return weapon_data.sword_blade_scale if weapon_data else _DEF_SCALE
+func _hilt() -> float:         return weapon_data.sword_hilt_to_hand if weapon_data else _DEF_HILT
+func _weapon_pos() -> Vector2: return weapon_data.sword_weapon_pos if weapon_data else _DEF_WEAPON_POS
+func _rest() -> float:         return deg_to_rad(weapon_data.sword_blade_rest_deg if weapon_data else _DEF_REST_DEG)
+func _grip() -> Vector2:       return weapon_data.sword_hand_grip if weapon_data else _DEF_GRIP
+func _grip_rot() -> float:     return weapon_data.sword_hand_grip_rot if weapon_data else _DEF_GRIP_ROT
+func _back() -> Vector2:       return weapon_data.sword_back_hand if weapon_data else _DEF_BACK
+func _swing_mul() -> float:    return weapon_data.sword_move_swing_mul if weapon_data else _DEF_SWING_MUL
+func _charge_deg() -> float:   return deg_to_rad(weapon_data.sword_charge_blade_deg if weapon_data else _DEF_CHARGE_DEG)
+func _charge_off() -> Vector2: return weapon_data.sword_charge_offhand if weapon_data else _DEF_CHARGE_OFFHAND
+func _parry_deg() -> float:    return deg_to_rad(weapon_data.sword_parry_blade_deg if weapon_data else _DEF_PARRY_DEG)
+
+
+func setup_visual(weapon_sprite: Sprite2D, wdata: WeaponData, pivots: Dictionary) -> void:
+	if not weapon_sprite or not wdata.weapon_icon:
 		return
 
-	weapon_sprite.texture = weapon_data.weapon_icon
-	weapon_sprite.scale = Vector2(BLADE_SCALE, BLADE_SCALE)
+	weapon_sprite.texture = wdata.weapon_icon
+	weapon_sprite.scale = Vector2(_scale(), _scale())
 
 	# Pivot at the hilt (bottom of the sprite) so the blade swings from the grip.
-	var tex_h = weapon_data.weapon_icon.get_height()
-	weapon_sprite.offset = Vector2(0, -tex_h / 2.0 + HILT_TO_HAND)
-	weapon_sprite.position = WEAPON_POS
-	weapon_sprite.rotation = deg_to_rad(BLADE_REST_DEG)
+	var tex_h = wdata.weapon_icon.get_height()
+	weapon_sprite.offset = Vector2(0, -tex_h / 2.0 + _hilt())
+	weapon_sprite.position = _weapon_pos()
+	weapon_sprite.rotation = _rest()
 	weapon_sprite.z_index = 10  # above all body parts
 	weapon_sprite.visible = true
 
@@ -46,10 +59,10 @@ func setup_visual(weapon_sprite: Sprite2D, weapon_data: WeaponData, pivots: Dict
 	var larm = pivots.get("larm_node") as Node2D
 	var rarm = pivots.get("rarm_node") as Node2D
 	if larm:
-		larm.position = HAND_GRIP
-		larm.rotation = HAND_GRIP_ROT
+		larm.position = _grip()
+		larm.rotation = _grip_rot()
 	if rarm:
-		rarm.position = BACK_HAND
+		rarm.position = _back()
 		rarm.rotation = 0.0
 
 
@@ -57,11 +70,11 @@ func get_hold_positions() -> Dictionary:
 	## One-handed grip: forward hand holds the hilt (held steadier while moving so
 	## the blade doesn't flail); the back hand keeps its full natural swing.
 	return {
-		"base_larm": HAND_GRIP,
-		"base_rarm": BACK_HAND,
-		"larm_rot": HAND_GRIP_ROT,
+		"base_larm": _grip(),
+		"base_rarm": _back(),
+		"larm_rot": _grip_rot(),
 		"rarm_rot": 0.0,
-		"larm_swing_mul": MOVE_SWING_MUL,
+		"larm_swing_mul": _swing_mul(),
 		"rarm_swing_mul": 1.0,
 	}
 
@@ -71,8 +84,8 @@ func get_attack_animations(pivots: Dictionary) -> Dictionary:
 	var base_head: Vector2  = pivots.get("base_head", Vector2(0, -5.5))
 	var base_lleg: Vector2  = pivots.get("base_lleg", Vector2(-1, 4))
 	var base_rleg: Vector2  = pivots.get("base_rleg", Vector2(0, 4))
-	var f := HAND_GRIP   # forward (sword) hand base
-	var b := BACK_HAND   # free back hand base
+	var f := _grip()   # forward (sword) hand base
+	var b := _back()   # free back hand base
 
 	return {
 		"sword_combo_1": _make_combo_1(f, b, base_torso, base_head, base_lleg, base_rleg),
@@ -89,15 +102,16 @@ func _make_combo_1(f: Vector2, b: Vector2, base_torso: Vector2, base_head: Vecto
 	var a = Animation.new()
 	a.length = 0.38
 	a.step = 0.05
-	var REST := deg_to_rad(BLADE_REST_DEG)
+	var REST := _rest()
+	var GR := _grip_rot()
 
 	# Forward (sword) arm: wind up high-back, slash down-forward, recover
 	anim_rot(a, "LeftArmPivot", [
-		[0.0,  HAND_GRIP_ROT],
-		[0.08, HAND_GRIP_ROT - 0.7],
-		[0.18, HAND_GRIP_ROT + 1.3],
-		[0.28, HAND_GRIP_ROT + 0.9],
-		[0.38, HAND_GRIP_ROT],
+		[0.0,  GR],
+		[0.08, GR - 0.7],
+		[0.18, GR + 1.3],
+		[0.28, GR + 0.9],
+		[0.38, GR],
 	])
 	anim_pos(a, "LeftArmPivot", [
 		[0.0,  f],
@@ -144,15 +158,16 @@ func _make_combo_2(f: Vector2, b: Vector2, base_torso: Vector2, base_head: Vecto
 	var a = Animation.new()
 	a.length = 0.30
 	a.step = 0.05
-	var REST := deg_to_rad(BLADE_REST_DEG)
+	var REST := _rest()
+	var GR := _grip_rot()
 
 	# Forward arm: brief low-forward windup, then whip up-back
 	anim_rot(a, "LeftArmPivot", [
-		[0.0,  HAND_GRIP_ROT],
-		[0.06, HAND_GRIP_ROT + 0.8],
-		[0.15, HAND_GRIP_ROT - 1.3],
-		[0.24, HAND_GRIP_ROT - 0.9],
-		[0.30, HAND_GRIP_ROT],
+		[0.0,  GR],
+		[0.06, GR + 0.8],
+		[0.15, GR - 1.3],
+		[0.24, GR - 0.9],
+		[0.30, GR],
 	])
 	anim_pos(a, "LeftArmPivot", [
 		[0.0,  f],
@@ -193,16 +208,17 @@ func _make_combo_3(f: Vector2, b: Vector2, base_torso: Vector2, base_head: Vecto
 	var a = Animation.new()
 	a.length = 0.5
 	a.step = 0.05
-	var REST := deg_to_rad(BLADE_REST_DEG)
+	var REST := _rest()
+	var GR := _grip_rot()
 
 	# Forward arm: raise the blade high overhead, then chop straight down-forward
 	anim_rot(a, "LeftArmPivot", [
-		[0.0,  HAND_GRIP_ROT],
-		[0.1,  HAND_GRIP_ROT - 0.4],
-		[0.2,  HAND_GRIP_ROT - 1.3],
-		[0.32, HAND_GRIP_ROT + 1.8],
-		[0.42, HAND_GRIP_ROT + 1.3],
-		[0.5,  HAND_GRIP_ROT],
+		[0.0,  GR],
+		[0.1,  GR - 0.4],
+		[0.2,  GR - 1.3],
+		[0.32, GR + 1.8],
+		[0.42, GR + 1.3],
+		[0.5,  GR],
 	])
 	anim_pos(a, "LeftArmPivot", [
 		[0.0,  f],
@@ -259,16 +275,18 @@ func _make_charged_thrust(f: Vector2, b: Vector2, base_torso: Vector2, base_head
 	var a = Animation.new()
 	a.length = 0.8
 	a.step = 0.05
-	var REST := deg_to_rad(BLADE_REST_DEG)
-	var LEVEL := deg_to_rad(CHARGE_BLADE_DEG)  # blade leveled forward for the thrust
+	var REST := _rest()
+	var GR := _grip_rot()
+	var LEVEL := _charge_deg()  # blade leveled forward for the thrust
+	var OFF := _charge_off()
 
 	# ── Windup (0.0–0.3): both hands pull to the waist, blade levels forward ──
 	# ── Thrust (0.3–0.55): explode forward ── Recover (0.55–0.8) ──
 	anim_rot(a, "LeftArmPivot", [
-		[0.0,  HAND_GRIP_ROT],
-		[0.3,  HAND_GRIP_ROT + 0.4],   # cocked back
-		[0.42, HAND_GRIP_ROT - 0.3],   # driven forward
-		[0.8,  HAND_GRIP_ROT],
+		[0.0,  GR],
+		[0.3,  GR + 0.4],   # cocked back
+		[0.42, GR - 0.3],   # driven forward
+		[0.8,  GR],
 	])
 	anim_pos(a, "LeftArmPivot", [
 		[0.0,  f],
@@ -287,9 +305,9 @@ func _make_charged_thrust(f: Vector2, b: Vector2, base_torso: Vector2, base_head
 	# Back hand comes ONTO the grip (two-handed) for the thrust, then releases
 	anim_pos(a, "RightArmPivot", [
 		[0.0,  b],
-		[0.3,  b + CHARGE_OFFHAND * 0.6],
-		[0.42, b + CHARGE_OFFHAND],     # both hands driving forward together
-		[0.55, b + CHARGE_OFFHAND * 0.5],
+		[0.3,  b + OFF * 0.6],
+		[0.42, b + OFF],     # both hands driving forward together
+		[0.55, b + OFF * 0.5],
 		[0.8,  b],
 	])
 	anim_rot(a, "RightArmPivot", [
@@ -344,8 +362,9 @@ func _make_parry_guard(f: Vector2, b: Vector2, base_torso: Vector2, base_head: V
 	var a = Animation.new()
 	a.length = 0.45
 	a.loop_mode = Animation.LOOP_NONE
-	var REST := deg_to_rad(BLADE_REST_DEG)
-	var GUARD := deg_to_rad(PARRY_BLADE_DEG)
+	var REST := _rest()
+	var GR := _grip_rot()
+	var GUARD := _parry_deg()
 
 	# Forward hand raises the sword up and across, holds, relaxes
 	anim_pos(a, "LeftArmPivot", [
@@ -355,10 +374,10 @@ func _make_parry_guard(f: Vector2, b: Vector2, base_torso: Vector2, base_head: V
 		[0.45, f],
 	])
 	anim_rot(a, "LeftArmPivot", [
-		[0.0,  HAND_GRIP_ROT],
-		[0.05, HAND_GRIP_ROT - 1.0],
-		[0.28, HAND_GRIP_ROT - 1.0],
-		[0.45, HAND_GRIP_ROT],
+		[0.0,  GR],
+		[0.05, GR - 1.0],
+		[0.28, GR - 1.0],
+		[0.45, GR],
 	])
 	# Blade snaps to a near-vertical guard, then back to rest
 	anim_rot(a, "LeftArmPivot/WeaponSprite", [

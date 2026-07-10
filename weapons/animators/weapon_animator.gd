@@ -7,6 +7,11 @@ class_name WeaponAnimator
 ## Animators are stateless utilities — they receive everything they need
 ## as function arguments so they can be freely swapped at runtime.
 
+## The WeaponData this animator is serving. player_animator sets it on equip,
+## BEFORE get_hold_positions()/get_attack_animations() are called, so subclasses
+## can read per-weapon @export tuning straight off the resource.
+var weapon_data: WeaponData = null
+
 
 ## Configure how the weapon sprite looks when held (scale, rotation, offset, z_index, position).
 ## Override in subclass.

@@ -58,6 +58,22 @@ class_name WeaponData
 ## Combo sequence — if non-empty, overrides attack_right/left with an ordered combo chain.
 @export var combo_anims: Array[String] = []
 
+@export_group("Sword Hold & Visual")
+## Read by SwordAnimator (one-handed short sword). Rig-local units, before the
+## PlayerSkin 2× scale. Tweak these in the Inspector to place/shape the blade.
+## The sword is held by the hilt in the FORWARD hand (LeftArmPivot).
+@export var sword_blade_scale: float = 0.42        ## sprite scale of the blade
+@export var sword_hilt_to_hand: float = 4.0        ## px the grip pokes past the sprite bottom (hilt pivot)
+@export var sword_weapon_pos := Vector2(-5, 3)     ## blade sprite position relative to the forward hand
+@export var sword_blade_rest_deg: float = -45.0    ## blade angle at rest — up & forward (degrees)
+@export var sword_hand_grip := Vector2(7, -3)      ## forward-hand grip position at rest
+@export var sword_hand_grip_rot: float = -0.15     ## forward-hand tilt at rest (radians)
+@export var sword_back_hand := Vector2(-6, -4.5)   ## free back-hand rest position
+@export var sword_move_swing_mul: float = 0.35     ## damp the sword arm's swing while moving (0..1)
+@export var sword_charge_blade_deg: float = 60.0   ## blade leveled forward during the charged thrust (deg)
+@export var sword_charge_offhand := Vector2(9, -1) ## back-hand grip offset during the two-handed thrust
+@export var sword_parry_blade_deg: float = -88.0   ## blade angle in the parry guard (deg)
+
 
 var _runtime_icon: Texture2D = null
 
