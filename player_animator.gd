@@ -513,8 +513,8 @@ func _make_walk() -> Animation:
 	# passing poses at t=0.15/0.45 (legs vertical under the body).
 	# The rig faces +x, and the legs pivot at the hip: NEGATIVE rotation swings
 	# a foot forward, POSITIVE swings it back.
-	var SWING := 0.20   # hip swing amplitude (~11.5°) — a tidy step, not a wide split
-	var LIFT  := Vector2(0, -1.5)  # swing-leg foot clearance at mid-pass
+	var SWING := 0.14   # hip swing amplitude (~8°) — feet stay under the torso
+	var LIFT  := Vector2(0, -1.3)  # swing-leg foot clearance at mid-pass
 
 	# Left leg: forward at contact → vertical at pass → back → pass → forward
 	_rot(a, "LeftLegPivot", [
@@ -612,7 +612,7 @@ func _make_run() -> Animation:
 	a.length = 0.24
 	a.loop_mode = Animation.LOOP_LINEAR
 
-	var SWING := 0.30              # bigger stride than the walk, still tidy
+	var SWING := 0.22              # bigger stride than the walk, feet still under body
 	var LIFT  := Vector2(0, -3.0)  # more toe clearance at the drive-through
 	var BOB   := 2.4               # deeper vertical push per step
 	var LEAN_X := 2.0              # whole upper body pitched forward into the run
