@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
-const SPEED = 350.0
+const SPEED = 350.0        # walk (default ground movement)
+const SPRINT_SPEED = 560.0 # engaged by double-tapping a direction (see PlayerInput)
 const JUMP_VELOCITY = -400.0
 const ATTACK_TEXT_TIME = 0.5
 
@@ -523,7 +524,10 @@ func _physics_process(delta: float) -> void:
 	if is_hurt or is_parrying or parry_recovery_timer > 0.0:
 		velocity.x = move_toward(velocity.x, 0, SPEED * delta * 6.0)
 	elif abs(joystick_vector.x) > 0.1:
-		velocity.x = joystick_vector.x * SPEED
+		if input_ctrl and input_ctrl.sprinting:
+			velocity.x = sign(joystick_vector.x) * SPRINT_SPEED
+		else:
+			velocity.x = joystick_vector.x * SPEED  # analog walk (fine control on touch)
 	else:
 		velocity.x = move_toward(velocity.x, 0, SPEED)
 	move_and_slide()
@@ -602,7 +606,7 @@ func _physics_process(delta: float) -> void:
 			if fall_timer > 0.0 and player_skin:
 				player_skin.rotation = 0.0
 			fall_timer = 0.0
-			if abs(joystick_vector.x) > 0.6:
+			if input_ctrl and input_ctrl.sprinting and abs(joystick_vector.x) > 0.1:
 				player_skin.play_state("run")
 			elif abs(joystick_vector.x) > 0.1:
 				player_skin.play_state("walk")

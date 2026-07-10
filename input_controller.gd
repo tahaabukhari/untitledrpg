@@ -45,6 +45,19 @@ var _joystick_vector := Vector2.ZERO
 var _last_emitted_move := Vector2.ZERO
 var _force_move_emit := false
 
+## Sprint: engaged by a quick double-tap of a horizontal direction — a key
+## double-tap in KBM, a joystick slide-out flick in TOUCH — and held while that
+## direction stays pushed. Detected off the same movement vector we already
+## emit, so both input modes work without special-casing the joystick.
+var sprinting := false
+var _sprint_dir := 0            # -1 / +1: direction currently being sprinted
+var _last_tap_dir := 0          # direction of the previous outward tap
+var _tap_timer := 999.0         # seconds since that tap (starts "expired")
+var _tap_armed := true          # true once x returns near center → ready for a fresh tap
+const SPRINT_TAP_WINDOW := 0.28 # max gap between the two taps
+const SPRINT_ACT := 0.6         # |x| that counts as an outward tap / sustains sprint
+const SPRINT_REL := 0.35        # |x| below which the tap re-arms and sprint drops
+
 const TOUCH_BUTTON_NAMES: Array[String] = ["JOYSTICK", "AttackButton", "JumpButton", "EvadeButton", "PauseButton"]
 
 
@@ -86,6 +99,8 @@ func _process(delta: float) -> void:
 		_last_emitted_move = v
 		move_changed.emit(v)
 
+	_update_sprint(v, delta)
+
 	# Jump — edge triggered; ui_accept kept working alongside the new action.
 	if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 		jump_pressed.emit()
@@ -101,6 +116,42 @@ func _process(delta: float) -> void:
 		# Safety: if the action-driven release was consumed by GUI, poll it.
 		if _charge_source == ChargeSource.ACTION and not Input.is_action_pressed("attack"):
 			_release_charge()
+
+
+# ─── Sprint (double-tap direction, hold to keep) ─────────────────────────────
+
+func _update_sprint(v: Vector2, delta: float) -> void:
+	_tap_timer += delta
+
+	# Returning toward center re-arms the next tap and ends any active sprint.
+	if absf(v.x) <= SPRINT_REL:
+		_tap_armed = true
+		if sprinting:
+			sprinting = false
+			_sprint_dir = 0
+
+	# Reversing direction cancels an active sprint immediately.
+	var xdir := int(signf(v.x)) if absf(v.x) >= SPRINT_ACT else 0
+	if sprinting and xdir != 0 and xdir != _sprint_dir:
+		sprinting = false
+		_sprint_dir = 0
+
+	# A fresh outward tap (crossing the activation threshold while armed).
+	if xdir != 0 and _tap_armed:
+		_tap_armed = false
+		if xdir == _last_tap_dir and _tap_timer <= SPRINT_TAP_WINDOW:
+			sprinting = true          # second same-direction tap, quick enough
+			_sprint_dir = xdir
+		_last_tap_dir = xdir
+		_tap_timer = 0.0
+
+
+func _reset_sprint() -> void:
+	sprinting = false
+	_sprint_dir = 0
+	_last_tap_dir = 0
+	_tap_timer = 999.0
+	_tap_armed = true
 
 
 # ─── Event handling ──────────────────────────────────────────────────────────
@@ -223,6 +274,7 @@ func _set_mode(new_mode: int) -> void:
 		return
 	mode = new_mode
 	_force_move_emit = true
+	_reset_sprint()  # don't carry a stale sprint across an input-mode switch
 	refresh_touch_visibility()
 
 
