@@ -82,9 +82,9 @@ func _make_cast(pivots: Dictionary) -> Animation:
 	var base_head: Vector2 = pivots.get("base_head", Vector2(0, -5.5))
 	var base_lleg: Vector2 = pivots.get("base_lleg", Vector2(-1, 4))
 	var base_rleg: Vector2 = pivots.get("base_rleg", Vector2(0, 4))
-	# Two-handed staff grip (matches StaffAnimator.setup_visual)
-	var g_larm := Vector2(2, -1)
-	var g_rarm := Vector2(0, 2)
+	# Two-handed staff grip (read from the weapon so recoil settles to the hold)
+	var g_larm := _front()
+	var g_rarm := _back()
 
 	var a := Animation.new()
 	a.length = 0.45

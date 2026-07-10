@@ -4,9 +4,18 @@ class_name PrayerAnimator
 ## rubbing both hands together in supplication (with a little head bow), and a
 ## method track fires `_trigger_prayer_effect` at the climax so the 1-in-7
 ## lightning roll syncs with the animation.
+##
+## The resting hand positions are on the weapon's .tres ("Prayer Hold" group).
+
+const _DEF_FRONT := Vector2(5, -4.5)
+const _DEF_BACK := Vector2(-4, -4.5)
 
 
-func setup_visual(weapon_sprite: Sprite2D, _weapon_data: WeaponData, pivots: Dictionary) -> void:
+func _front() -> Vector2: return weapon_data.prayer_front_hand if weapon_data else _DEF_FRONT
+func _back() -> Vector2:  return weapon_data.prayer_back_hand if weapon_data else _DEF_BACK
+
+
+func setup_visual(weapon_sprite: Sprite2D, _wdata: WeaponData, pivots: Dictionary) -> void:
 	# Empty hands — hide any weapon sprite entirely
 	if weapon_sprite:
 		weapon_sprite.visible = false
@@ -15,17 +24,17 @@ func setup_visual(weapon_sprite: Sprite2D, _weapon_data: WeaponData, pivots: Dic
 	var larm := pivots.get("larm_node") as Node2D
 	var rarm := pivots.get("rarm_node") as Node2D
 	if larm:
-		larm.position = Vector2(5, -4.5)
+		larm.position = _front()
 		larm.rotation = -0.1
 	if rarm:
-		rarm.position = Vector2(-4, -4.5)
+		rarm.position = _back()
 		rarm.rotation = 0.1
 
 
 func get_hold_positions() -> Dictionary:
 	return {
-		"base_larm": Vector2(5, -4.5),
-		"base_rarm": Vector2(-4, -4.5),
+		"base_larm": _front(),
+		"base_rarm": _back(),
 		"larm_rot": -0.1,
 		"rarm_rot": 0.1,
 	}
@@ -42,8 +51,8 @@ func _make_prayer_rub(pivots: Dictionary) -> Animation:
 	var base_head: Vector2 = pivots.get("base_head", Vector2(0, -5.5))
 	var base_lleg: Vector2 = pivots.get("base_lleg", Vector2(-1, 4))
 	var base_rleg: Vector2 = pivots.get("base_rleg", Vector2(0, 4))
-	var g_larm := Vector2(5, -4.5)
-	var g_rarm := Vector2(-4, -4.5)
+	var g_larm := _front()
+	var g_rarm := _back()
 
 	var a := Animation.new()
 	a.length = 0.7

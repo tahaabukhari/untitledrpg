@@ -1,42 +1,63 @@
 extends WeaponAnimator
 class_name ProjectileWeaponAnimator
-## Animation provider for the ranger's bow. The draw-and-loose animation
+## Animation provider for the ranger's bow. TWO-HANDED: the front hand holds the
+## riser, the back hand draws the string back and looses. The draw-and-loose
 ## fires a real projectile via a "_fire_projectile" method track (handled by
 ## player_animator → playercontroller.fire_projectile()).
 ## The bow texture is generated in code when the WeaponData has no icon.
+##
+## Grip/visual tuning is on the weapon's .tres ("Bow Hold & Visual" group).
+
+const _DEF_SCALE := 1.0
+const _DEF_SPRITE_POS := Vector2(6, 9)
+const _DEF_FRONT := Vector2(7, -5)
+const _DEF_BACK := Vector2(-2, -5)
+const _DEF_DRAW := 5.0
+const _DEF_SWING := 0.25
 
 
-func setup_visual(weapon_sprite: Sprite2D, weapon_data: WeaponData, pivots: Dictionary) -> void:
+func _bscale() -> float:  return weapon_data.bow_scale if weapon_data else _DEF_SCALE
+func _bpos() -> Vector2:  return weapon_data.bow_sprite_pos if weapon_data else _DEF_SPRITE_POS
+func _front() -> Vector2: return weapon_data.bow_front_hand if weapon_data else _DEF_FRONT
+func _back() -> Vector2:  return weapon_data.bow_back_hand if weapon_data else _DEF_BACK
+func _draw() -> float:    return weapon_data.bow_draw_back if weapon_data else _DEF_DRAW
+func _bswing() -> float:  return weapon_data.bow_swing_mul if weapon_data else _DEF_SWING
+
+
+func setup_visual(weapon_sprite: Sprite2D, wdata: WeaponData, pivots: Dictionary) -> void:
 	if not weapon_sprite:
 		return
-	var tex: Texture2D = weapon_data.weapon_icon
+	var tex: Texture2D = wdata.weapon_icon
 	if tex == null:
 		tex = _make_bow_texture()
 	weapon_sprite.texture = tex
-	weapon_sprite.scale = Vector2(1, 1)
+	weapon_sprite.scale = Vector2(_bscale(), _bscale())
 	weapon_sprite.offset = Vector2.ZERO
-	weapon_sprite.position = Vector2(6, 9)
+	weapon_sprite.position = _bpos()
 	weapon_sprite.rotation = 0.0
 	weapon_sprite.z_index = 3
 	weapon_sprite.visible = true
 
-	# Bow arm forward, draw arm back near the cheek
+	# Front (riser) hand forward; back (string) hand at the anchor near the cheek
 	var larm := pivots.get("larm_node") as Node2D
 	var rarm := pivots.get("rarm_node") as Node2D
 	if larm:
-		larm.position = Vector2(7, -5)
+		larm.position = _front()
 		larm.rotation = 0.0
 	if rarm:
-		rarm.position = Vector2(-2, -5)
+		rarm.position = _back()
 		rarm.rotation = 0.0
 
 
 func get_hold_positions() -> Dictionary:
+	## Two-handed: both hands damped while moving so the bow is carried steady.
 	return {
-		"base_larm": Vector2(7, -5),
-		"base_rarm": Vector2(-2, -5),
+		"base_larm": _front(),
+		"base_rarm": _back(),
 		"larm_rot": 0.0,
 		"rarm_rot": 0.0,
+		"larm_swing_mul": _bswing(),
+		"rarm_swing_mul": _bswing(),
 	}
 
 
@@ -52,8 +73,9 @@ func _make_bow_shot(pivots: Dictionary, charged: bool) -> Animation:
 	var base_head: Vector2 = pivots.get("base_head", Vector2(0, -5.5))
 	var base_lleg: Vector2 = pivots.get("base_lleg", Vector2(-1, 4))
 	var base_rleg: Vector2 = pivots.get("base_rleg", Vector2(0, 4))
-	var g_larm := Vector2(7, -5)
-	var g_rarm := Vector2(-2, -5)
+	var g_larm := _front()
+	var g_rarm := _back()
+	var draw := _draw()  # full-draw pull-back distance (px), charged pulls deeper
 
 	var a := Animation.new()
 	a.length = 0.5 if charged else 0.35
@@ -61,7 +83,7 @@ func _make_bow_shot(pivots: Dictionary, charged: bool) -> Animation:
 	var t_draw: float = a.length * 0.45   # fully drawn
 	var t_loose: float = a.length * 0.55  # arrow flies
 
-	# Bow arm holds steady, pushes slightly forward on release
+	# Bow (front) arm holds steady, pushes slightly forward on release
 	anim_pos(a, "LeftArmPivot", [
 		[0.0, g_larm],
 		[t_draw, g_larm + Vector2(1, 0)],
@@ -70,10 +92,11 @@ func _make_bow_shot(pivots: Dictionary, charged: bool) -> Animation:
 	])
 	anim_rot(a, "LeftArmPivot", [[0.0, 0.0], [a.length, 0.0]])
 
-	# Draw arm pulls back to the cheek then snaps forward
+	# Draw (back) hand pulls the string back to the cheek, then snaps forward on loose
+	var pull := draw * (1.3 if charged else 1.0)
 	anim_pos(a, "RightArmPivot", [
 		[0.0, g_rarm],
-		[t_draw, g_rarm + Vector2(-5, -1)],
+		[t_draw, g_rarm + Vector2(-pull, -1)],
 		[t_loose, g_rarm + Vector2(3, 0)],
 		[a.length, g_rarm],
 	])

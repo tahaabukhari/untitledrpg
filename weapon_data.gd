@@ -74,6 +74,32 @@ class_name WeaponData
 @export var sword_charge_offhand := Vector2(9, -1) ## back-hand grip offset during the two-handed thrust
 @export var sword_parry_blade_deg: float = -88.0   ## blade angle in the parry guard (deg)
 
+@export_group("Staff Hold & Visual")
+## Two-handed staff — both hands grip ADJACENT on the shaft. Read by StaffAnimator
+## (and the mage staff). Rig-local units, before the 2× PlayerSkin scale.
+@export var staff_scale: float = 0.42          ## staff sprite scale
+@export var staff_rest_deg: float = -60.0      ## staff angle at rest (deg)
+@export var staff_sprite_pos := Vector2(3, 1)  ## staff sprite position relative to the front hand
+@export var staff_front_hand := Vector2(2, -1) ## upper grip hand
+@export var staff_back_hand := Vector2(1, 1)   ## lower grip hand — kept beside the upper one
+@export var staff_swing_mul: float = 0.25      ## both hands damped while moving (two-handed grip)
+
+@export_group("Bow Hold & Visual")
+## Two-handed bow — front hand holds the riser, back hand draws the string. Read
+## by ProjectileWeaponAnimator; the draw-back itself lives in the shot anim.
+@export var bow_scale: float = 1.0
+@export var bow_sprite_pos := Vector2(6, 9)    ## bow sprite position relative to the front (riser) hand
+@export var bow_front_hand := Vector2(7, -5)   ## riser hand, forward
+@export var bow_back_hand := Vector2(-2, -5)   ## string hand at anchor (rest)
+@export var bow_draw_back: float = 5.0         ## how far the string hand pulls back on a full draw (px)
+@export var bow_swing_mul: float = 0.25        ## both hands damped while moving (two-handed grip)
+
+@export_group("Prayer Hold")
+## Healer's empty-handed prayer — hands rest ready to clasp, then rub together.
+## Read by PrayerAnimator; the rub itself lives in the prayer_rub anim.
+@export var prayer_front_hand := Vector2(5, -4.5)
+@export var prayer_back_hand := Vector2(-4, -4.5)
+
 
 var _runtime_icon: Texture2D = null
 
