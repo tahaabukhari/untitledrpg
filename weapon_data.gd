@@ -63,9 +63,9 @@ class_name WeaponData
 ## PlayerSkin 2× scale. Tweak these in the Inspector to place/shape the blade.
 ## The sword is held by the hilt in the FORWARD hand (LeftArmPivot).
 @export var sword_blade_scale: float = 0.42        ## sprite scale of the blade
-@export var sword_hilt_to_hand: float = 4.0        ## px the grip pokes past the sprite bottom (hilt pivot)
-@export var sword_weapon_pos := Vector2(-5, 3)     ## blade sprite position relative to the forward hand
-@export var sword_blade_rest_deg: float = -45.0    ## blade angle at rest — up & forward (degrees)
+@export var sword_hilt_to_hand: float = 0.0        ## nudge the hilt along the blade into/out of the palm (px)
+@export var sword_grip_offset := Vector2(0, 0)     ## hilt offset FROM the forward hand (0 = locked in the hand)
+@export var sword_blade_rest_deg: float = 0.0      ## blade facing at rest (deg); +CW. Tune to point up/forward
 @export var sword_hand_grip := Vector2(7, -3)      ## forward-hand grip position at rest
 @export var sword_hand_grip_rot: float = -0.15     ## forward-hand tilt at rest (radians)
 @export var sword_back_hand := Vector2(-6, -4.5)   ## free back-hand rest position

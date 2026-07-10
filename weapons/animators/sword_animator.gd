@@ -13,9 +13,10 @@ class_name SwordAnimator
 
 # Fallback defaults if weapon_data is somehow missing (should not happen in play).
 const _DEF_SCALE := 0.42
-const _DEF_HILT := 4.0
-const _DEF_WEAPON_POS := Vector2(-5, 3)
-const _DEF_REST_DEG := -45.0
+const _DEF_HILT := 0.0
+const _DEF_GRIP_OFFSET := Vector2(0, 0)
+const _DEF_REST_DEG := 0.0
+const _HAND_LOCAL := Vector2(-6, 4)  # LeftArmPivot/Sprite position — fallback if the node is missing
 const _DEF_GRIP := Vector2(7, -3)
 const _DEF_GRIP_ROT := -0.15
 const _DEF_BACK := Vector2(-6, -4.5)
@@ -29,7 +30,7 @@ const _DEF_PARRY_DEG := -88.0
 
 func _scale() -> float:        return weapon_data.sword_blade_scale if weapon_data else _DEF_SCALE
 func _hilt() -> float:         return weapon_data.sword_hilt_to_hand if weapon_data else _DEF_HILT
-func _weapon_pos() -> Vector2: return weapon_data.sword_weapon_pos if weapon_data else _DEF_WEAPON_POS
+func _grip_offset() -> Vector2: return weapon_data.sword_grip_offset if weapon_data else _DEF_GRIP_OFFSET
 func _rest() -> float:         return deg_to_rad(weapon_data.sword_blade_rest_deg if weapon_data else _DEF_REST_DEG)
 func _grip() -> Vector2:       return weapon_data.sword_hand_grip if weapon_data else _DEF_GRIP
 func _grip_rot() -> float:     return weapon_data.sword_hand_grip_rot if weapon_data else _DEF_GRIP_ROT
@@ -47,17 +48,27 @@ func setup_visual(weapon_sprite: Sprite2D, wdata: WeaponData, pivots: Dictionary
 	weapon_sprite.texture = wdata.weapon_icon
 	weapon_sprite.scale = Vector2(_scale(), _scale())
 
-	# Pivot at the hilt (bottom of the sprite) so the blade swings from the grip.
+	# Pivot at the hilt: offset the texture up by half its height so the sprite's
+	# BOTTOM edge (the hilt) sits at the node origin. The blade then extends up
+	# from that point and rotations swing from the grip. _hilt() nudges it into
+	# or out of the palm along the blade.
 	var tex_h = wdata.weapon_icon.get_height()
 	weapon_sprite.offset = Vector2(0, -tex_h / 2.0 + _hilt())
-	weapon_sprite.position = _weapon_pos()
+
+	# LOCK the hilt to the forward hand: the WeaponSprite is a sibling of the
+	# hand sprite under LeftArmPivot, so matching the hand sprite's local
+	# position pins the hilt into the hand. It follows every animation for free
+	# (combos only rotate the blade / move the whole arm, never this position).
+	var larm = pivots.get("larm_node") as Node2D
+	var rarm = pivots.get("rarm_node") as Node2D
+	var hand_sprite := (larm.get_node_or_null("Sprite") if larm else null) as Sprite2D
+	var hand_local: Vector2 = hand_sprite.position if hand_sprite else _HAND_LOCAL
+	weapon_sprite.position = hand_local + _grip_offset()
 	weapon_sprite.rotation = _rest()
 	weapon_sprite.z_index = 10  # above all body parts
 	weapon_sprite.visible = true
 
 	# One-handed: forward hand grips the hilt; back hand relaxes at its rest.
-	var larm = pivots.get("larm_node") as Node2D
-	var rarm = pivots.get("rarm_node") as Node2D
 	if larm:
 		larm.position = _grip()
 		larm.rotation = _grip_rot()
