@@ -39,6 +39,11 @@ signal attack_finished
 
 var base_larm_rot := 0.0
 var base_rarm_rot := 0.0
+# Per-arm locomotion swing scale (1.0 = full). A weapon's hold can damp the arm
+# that grips it (e.g. the sword hand) so the blade is held steadier while moving,
+# while the free hand keeps its natural swing. Set via get_hold_positions().
+var larm_swing_mul := 1.0
+var rarm_swing_mul := 1.0
 
 @export_group("Weapon Adjustments")
 @export var weapon_pos_offset := Vector2(0, 0)  ## Manual position tweak for weapon sprite
@@ -140,6 +145,12 @@ func equip_weapon_visual(weapon: WeaponData) -> void:
 		# Fallback: no animator script → use fists
 		_active_animator = _fists_animator
 	
+	# Reset per-arm swing damping; a weapon's hold may re-damp below. Track the
+	# prior state so we still rebuild locomotion when clearing stale damping.
+	var had_damping := larm_swing_mul != 1.0 or rarm_swing_mul != 1.0
+	larm_swing_mul = 1.0
+	rarm_swing_mul = 1.0
+
 	# Apply weapon hold positions (overrides arm positions in locomotion anims)
 	var hold = _active_animator.get_hold_positions()
 	if hold.size() > 0:
@@ -147,6 +158,12 @@ func equip_weapon_visual(weapon: WeaponData) -> void:
 		base_rarm = hold.get("base_rarm", _default_rarm)
 		base_larm_rot = hold.get("larm_rot", 0.0)
 		base_rarm_rot = hold.get("rarm_rot", 0.0)
+		larm_swing_mul = hold.get("larm_swing_mul", 1.0)
+		rarm_swing_mul = hold.get("rarm_swing_mul", 1.0)
+		_rebuild_locomotion_animations()
+	elif had_damping:
+		# Incoming weapon has no hold overrides but the previous one damped an
+		# arm — rebuild so the swing returns to full.
 		_rebuild_locomotion_animations()
 	
 	# Apply hold arm rotations immediately to the nodes if provided
@@ -198,6 +215,8 @@ func unequip_weapon_visual() -> void:
 	base_rarm = _default_rarm
 	base_larm_rot = 0.0
 	base_rarm_rot = 0.0
+	larm_swing_mul = 1.0
+	rarm_swing_mul = 1.0
 	_rebuild_locomotion_animations()
 	
 	# Restore fist animations as default
@@ -603,22 +622,23 @@ func _make_walk() -> Animation:
 		[L,       base_head + HREST],
 	])
 
-	# Arms counter-swing — each opposes its same-side leg. Kept moderate so
-	# two-handed weapon grips don't split apart; base_*_rot folds in weapon holds.
-	var ARM := walk_arm_swing
+	# Arms counter-swing — each opposes its same-side leg. Per-arm scale lets a
+	# weapon damp the hand that grips it; base_*_rot folds in weapon holds.
+	var LARM := walk_arm_swing * larm_swing_mul
+	var RARM := walk_arm_swing * rarm_swing_mul
 	_rot(a, "LeftArmPivot", [
-		[0.0,     ARM + base_larm_rot],
+		[0.0,     LARM + base_larm_rot],
 		[q,       0.0 + base_larm_rot],
-		[q * 2.0,-ARM + base_larm_rot],
+		[q * 2.0,-LARM + base_larm_rot],
 		[q * 3.0, 0.0 + base_larm_rot],
-		[L,       ARM + base_larm_rot],
+		[L,       LARM + base_larm_rot],
 	])
 	_rot(a, "RightArmPivot", [
-		[0.0,    -ARM + base_rarm_rot],
+		[0.0,    -RARM + base_rarm_rot],
 		[q,       0.0 + base_rarm_rot],
-		[q * 2.0, ARM + base_rarm_rot],
+		[q * 2.0, RARM + base_rarm_rot],
 		[q * 3.0, 0.0 + base_rarm_rot],
-		[L,      -ARM + base_rarm_rot],
+		[L,      -RARM + base_rarm_rot],
 	])
 
 	# Hands pinned to their hold positions (rotation carries the swing)
@@ -701,22 +721,23 @@ func _make_run() -> Animation:
 		[L,       base_head + HLEAN],
 	])
 
-	# Arms pump hard, each opposing its same-side leg. base_*_rot folds in any
-	# two-handed weapon grip so equipped runs don't tear the hands apart.
-	var ARM := run_arm_swing
+	# Arms pump hard, each opposing its same-side leg. Per-arm scale lets a weapon
+	# damp the hand that grips it; base_*_rot folds in weapon holds.
+	var LARM := run_arm_swing * larm_swing_mul
+	var RARM := run_arm_swing * rarm_swing_mul
 	_rot(a, "LeftArmPivot", [
-		[0.0,     ARM + base_larm_rot],
+		[0.0,     LARM + base_larm_rot],
 		[q,       0.0 + base_larm_rot],
-		[q * 2.0,-ARM + base_larm_rot],
+		[q * 2.0,-LARM + base_larm_rot],
 		[q * 3.0, 0.0 + base_larm_rot],
-		[L,       ARM + base_larm_rot],
+		[L,       LARM + base_larm_rot],
 	])
 	_rot(a, "RightArmPivot", [
-		[0.0,    -ARM + base_rarm_rot],
+		[0.0,    -RARM + base_rarm_rot],
 		[q,       0.0 + base_rarm_rot],
-		[q * 2.0, ARM + base_rarm_rot],
+		[q * 2.0, RARM + base_rarm_rot],
 		[q * 3.0, 0.0 + base_rarm_rot],
-		[L,      -ARM + base_rarm_rot],
+		[L,      -RARM + base_rarm_rot],
 	])
 
 	# Hands ride forward with the lean; rotation carries the pump
