@@ -44,6 +44,29 @@ var base_rarm_rot := 0.0
 @export var weapon_pos_offset := Vector2(0, 0)  ## Manual position tweak for weapon sprite
 @export var weapon_rot_offset := 0.0             ## Manual rotation tweak (radians)
 
+# NOTE: animation tuning is exposed as @export so it can be dialed in from the
+# Inspector. Values are baked into the animations at _ready(), so edits apply on
+# the next run of the scene (same as the pivot positions above). Keep this
+# pattern for any new animation knob — promote magic numbers to @export.
+@export_group("Walk Cycle")
+@export var walk_length := 0.6      ## seconds per full stride (two steps)
+@export var walk_leg_swing := 0.14  ## hip swing amplitude (radians)
+@export var walk_arm_swing := 0.15  ## arm counter-swing amplitude (radians)
+@export var walk_foot_lift := 1.3   ## swing-foot clearance at pass (px)
+@export var walk_body_bob := 1.1    ## hip rise at pass (px)
+@export var walk_head_bob := 0.9    ## head rise at pass (px)
+@export var walk_lean := 0.05       ## forward torso tilt at contact (radians)
+
+@export_group("Run Cycle")
+@export var run_length := 0.24      ## seconds per full stride (two steps)
+@export var run_leg_swing := 0.22   ## hip swing amplitude (radians)
+@export var run_arm_swing := 0.42   ## arm pump amplitude (radians)
+@export var run_foot_lift := 3.0    ## swing-foot clearance at pass (px)
+@export var run_body_bob := 2.4     ## hip rise at pass (px)
+@export var run_head_bob := 1.8     ## head rise at pass (px)
+@export var run_lean_x := 2.0       ## upper-body forward shift into the run (px)
+@export var run_lean := 0.13        ## forward torso tilt (radians)
+
 # Store the original default arm positions (before weapon overrides)
 var _default_larm: Vector2
 var _default_rarm: Vector2
@@ -506,97 +529,101 @@ func _make_idle() -> Animation:
 
 func _make_walk() -> Animation:
 	var a = Animation.new()
-	a.length = 0.6
+	var L := walk_length
+	a.length = L
 	a.loop_mode = Animation.LOOP_LINEAR
 
-	# Full stride = two steps. Contact poses at t=0.0/0.3/0.6 (a foot forward),
-	# passing poses at t=0.15/0.45 (legs vertical under the body).
-	# The rig faces +x, and the legs pivot at the hip: NEGATIVE rotation swings
-	# a foot forward, POSITIVE swings it back.
-	var SWING := 0.14   # hip swing amplitude (~8°) — feet stay under the torso
-	var LIFT  := Vector2(0, -1.3)  # swing-leg foot clearance at mid-pass
+	# Full stride = two steps. Contacts at 0 / L·0.5 / L (a foot forward),
+	# passes at L·0.25 / L·0.75 (legs vertical under the body). The rig faces +x
+	# and legs pivot at the hip: NEGATIVE swings a foot forward, POSITIVE back.
+	var q := L * 0.25
+	var SWING := walk_leg_swing
+	var LIFT  := Vector2(0, -walk_foot_lift)
 
 	# Left leg: forward at contact → vertical at pass → back → pass → forward
 	_rot(a, "LeftLegPivot", [
-		[0.0,  -SWING],
-		[0.15,  0.0],
-		[0.3,   SWING],
-		[0.45,  0.0],
-		[0.6,  -SWING],
+		[0.0,     -SWING],
+		[q,        0.0],
+		[q * 2.0,  SWING],
+		[q * 3.0,  0.0],
+		[L,       -SWING],
 	])
 	# Right leg rides the exact opposite phase
 	_rot(a, "RightLegPivot", [
-		[0.0,   SWING],
-		[0.15,  0.0],
-		[0.3,  -SWING],
-		[0.45,  0.0],
-		[0.6,   SWING],
+		[0.0,      SWING],
+		[q,        0.0],
+		[q * 2.0, -SWING],
+		[q * 3.0,  0.0],
+		[L,        SWING],
 	])
 
 	# Foot clearance: lift each leg only while it swings forward through pass
-	# (left swings 0.3→0.6, peak at 0.45; right swings 0.0→0.3, peak at 0.15).
+	# (left drives q2→L, peak at q3; right drives 0→q2, peak at q).
 	_pos(a, "LeftLegPivot", [
-		[0.0,  base_lleg],
-		[0.3,  base_lleg],
-		[0.45, base_lleg + LIFT],
-		[0.6,  base_lleg],
+		[0.0,     base_lleg],
+		[q * 2.0, base_lleg],
+		[q * 3.0, base_lleg + LIFT],
+		[L,       base_lleg],
 	])
 	_pos(a, "RightLegPivot", [
-		[0.0,  base_rleg],
-		[0.15, base_rleg + LIFT],
-		[0.3,  base_rleg],
-		[0.6,  base_rleg],
+		[0.0,     base_rleg],
+		[q,       base_rleg + LIFT],
+		[q * 2.0, base_rleg],
+		[L,       base_rleg],
 	])
 
 	# Body bob: hips ride highest at pass (leg at full vertical length), lowest
 	# at contact (leg angled). This cancels the pendulum foot-arc so the feet
 	# hold a steady ground line. Two rises per stride.
+	var BOB := Vector2(0, -walk_body_bob)
 	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso],
-		[0.15, base_torso + Vector2(0, -1.1)],
-		[0.3,  base_torso],
-		[0.45, base_torso + Vector2(0, -1.1)],
-		[0.6,  base_torso],
+		[0.0,     base_torso],
+		[q,       base_torso + BOB],
+		[q * 2.0, base_torso],
+		[q * 3.0, base_torso + BOB],
+		[L,       base_torso],
 	])
 	# Subtle forward lean that eases as the body rises over the stance leg
 	_rot(a, "TorsoPivot", [
-		[0.0,  0.05],
-		[0.15, 0.02],
-		[0.3,  0.05],
-		[0.45, 0.02],
-		[0.6,  0.05],
+		[0.0,     walk_lean],
+		[q,       walk_lean * 0.4],
+		[q * 2.0, walk_lean],
+		[q * 3.0, walk_lean * 0.4],
+		[L,       walk_lean],
 	])
 
 	# Head tracks the torso bob with a hair of damping so the neck stays natural
+	var HBOB := Vector2(0, -walk_head_bob)
+	var HREST := Vector2(0, 0.2)
 	_pos(a, "HeadPivot", [
-		[0.0,  base_head + Vector2(0, 0.2)],
-		[0.15, base_head + Vector2(0, -0.9)],
-		[0.3,  base_head + Vector2(0, 0.2)],
-		[0.45, base_head + Vector2(0, -0.9)],
-		[0.6,  base_head + Vector2(0, 0.2)],
+		[0.0,     base_head + HREST],
+		[q,       base_head + HBOB],
+		[q * 2.0, base_head + HREST],
+		[q * 3.0, base_head + HBOB],
+		[L,       base_head + HREST],
 	])
 
 	# Arms counter-swing — each opposes its same-side leg. Kept moderate so
 	# two-handed weapon grips don't split apart; base_*_rot folds in weapon holds.
-	var ARM := 0.15
+	var ARM := walk_arm_swing
 	_rot(a, "LeftArmPivot", [
-		[0.0,   ARM + base_larm_rot],
-		[0.15,  0.0 + base_larm_rot],
-		[0.3,  -ARM + base_larm_rot],
-		[0.45,  0.0 + base_larm_rot],
-		[0.6,   ARM + base_larm_rot],
+		[0.0,     ARM + base_larm_rot],
+		[q,       0.0 + base_larm_rot],
+		[q * 2.0,-ARM + base_larm_rot],
+		[q * 3.0, 0.0 + base_larm_rot],
+		[L,       ARM + base_larm_rot],
 	])
 	_rot(a, "RightArmPivot", [
-		[0.0,  -ARM + base_rarm_rot],
-		[0.15,  0.0 + base_rarm_rot],
-		[0.3,   ARM + base_rarm_rot],
-		[0.45,  0.0 + base_rarm_rot],
-		[0.6,  -ARM + base_rarm_rot],
+		[0.0,    -ARM + base_rarm_rot],
+		[q,       0.0 + base_rarm_rot],
+		[q * 2.0, ARM + base_rarm_rot],
+		[q * 3.0, 0.0 + base_rarm_rot],
+		[L,      -ARM + base_rarm_rot],
 	])
 
 	# Hands pinned to their hold positions (rotation carries the swing)
-	_pos(a, "LeftArmPivot",  [[0.0, base_larm], [0.6, base_larm]])
-	_pos(a, "RightArmPivot", [[0.0, base_rarm], [0.6, base_rarm]])
+	_pos(a, "LeftArmPivot",  [[0.0, base_larm], [L, base_larm]])
+	_pos(a, "RightArmPivot", [[0.0, base_rarm], [L, base_rarm]])
 
 	return a
 
@@ -609,88 +636,92 @@ func _make_run() -> Animation:
 	## quicker cadence, longer reach, deeper bounce, a committed forward lean, and
 	## a strong arm pump. Timeline: contacts at 0.0/0.12/0.24, passes at 0.06/0.18.
 	var a = Animation.new()
-	a.length = 0.24
+	var L := run_length
+	a.length = L
 	a.loop_mode = Animation.LOOP_LINEAR
 
-	var SWING := 0.22              # bigger stride than the walk, feet still under body
-	var LIFT  := Vector2(0, -3.0)  # more toe clearance at the drive-through
-	var BOB   := 2.4               # deeper vertical push per step
-	var LEAN_X := 2.0              # whole upper body pitched forward into the run
+	var q := L * 0.25
+	var SWING := run_leg_swing            # bigger stride than the walk, feet still under body
+	var LIFT  := Vector2(0, -run_foot_lift)
+	var BOB   := Vector2(0, -run_body_bob)
+	var LEAN  := Vector2(run_lean_x, 0)   # whole upper body pitched forward into the run
 
 	# Legs: NEGATIVE swings a foot forward, POSITIVE swings it back.
 	_rot(a, "LeftLegPivot", [
-		[0.0,  -SWING],
-		[0.06,  0.0],
-		[0.12,  SWING],
-		[0.18,  0.0],
-		[0.24, -SWING],
+		[0.0,     -SWING],
+		[q,        0.0],
+		[q * 2.0,  SWING],
+		[q * 3.0,  0.0],
+		[L,       -SWING],
 	])
 	_rot(a, "RightLegPivot", [
-		[0.0,   SWING],
-		[0.06,  0.0],
-		[0.12, -SWING],
-		[0.18,  0.0],
-		[0.24,  SWING],
+		[0.0,      SWING],
+		[q,        0.0],
+		[q * 2.0, -SWING],
+		[q * 3.0,  0.0],
+		[L,        SWING],
 	])
 
 	# Toe clearance while each leg drives forward through its pass
-	# (right swings 0.0→0.12 peak 0.06; left swings 0.12→0.24 peak 0.18).
+	# (right drives 0→q2 peak q; left drives q2→L peak q3).
 	_pos(a, "RightLegPivot", [
-		[0.0,  base_rleg],
-		[0.06, base_rleg + LIFT],
-		[0.12, base_rleg],
-		[0.24, base_rleg],
+		[0.0,     base_rleg],
+		[q,       base_rleg + LIFT],
+		[q * 2.0, base_rleg],
+		[L,       base_rleg],
 	])
 	_pos(a, "LeftLegPivot", [
-		[0.0,  base_lleg],
-		[0.12, base_lleg],
-		[0.18, base_lleg + LIFT],
-		[0.24, base_lleg],
+		[0.0,     base_lleg],
+		[q * 2.0, base_lleg],
+		[q * 3.0, base_lleg + LIFT],
+		[L,       base_lleg],
 	])
 
 	# Hips ride highest at pass, lowest at contact — keeps planted feet on the
 	# ground line and gives the run its bounce. Two rises per stride.
 	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso + Vector2(LEAN_X, 0)],
-		[0.06, base_torso + Vector2(LEAN_X, -BOB)],
-		[0.12, base_torso + Vector2(LEAN_X, 0)],
-		[0.18, base_torso + Vector2(LEAN_X, -BOB)],
-		[0.24, base_torso + Vector2(LEAN_X, 0)],
+		[0.0,     base_torso + LEAN],
+		[q,       base_torso + LEAN + BOB],
+		[q * 2.0, base_torso + LEAN],
+		[q * 3.0, base_torso + LEAN + BOB],
+		[L,       base_torso + LEAN],
 	])
 	# Committed forward lean (siblings don't inherit torso rotation, so the lean
-	# is sold by the LEAN_X shift above plus this torso tilt).
-	_rot(a, "TorsoPivot", [[0.0, 0.13], [0.24, 0.13]])
+	# is sold by the LEAN shift above plus this torso tilt).
+	_rot(a, "TorsoPivot", [[0.0, run_lean], [L, run_lean]])
 
 	# Head pitched forward, tracking the bob a touch under the torso
+	var HLEAN := LEAN + Vector2(1.0, 0.2)
+	var HBOB  := Vector2(0, -run_head_bob)
 	_pos(a, "HeadPivot", [
-		[0.0,  base_head + Vector2(LEAN_X + 1.0, 0.2)],
-		[0.06, base_head + Vector2(LEAN_X + 1.0, -BOB + 0.6)],
-		[0.12, base_head + Vector2(LEAN_X + 1.0, 0.2)],
-		[0.18, base_head + Vector2(LEAN_X + 1.0, -BOB + 0.6)],
-		[0.24, base_head + Vector2(LEAN_X + 1.0, 0.2)],
+		[0.0,     base_head + HLEAN],
+		[q,       base_head + HLEAN + HBOB],
+		[q * 2.0, base_head + HLEAN],
+		[q * 3.0, base_head + HLEAN + HBOB],
+		[L,       base_head + HLEAN],
 	])
 
 	# Arms pump hard, each opposing its same-side leg. base_*_rot folds in any
 	# two-handed weapon grip so equipped runs don't tear the hands apart.
-	var ARM := 0.42
+	var ARM := run_arm_swing
 	_rot(a, "LeftArmPivot", [
-		[0.0,   ARM + base_larm_rot],
-		[0.06,  0.0 + base_larm_rot],
-		[0.12, -ARM + base_larm_rot],
-		[0.18,  0.0 + base_larm_rot],
-		[0.24,  ARM + base_larm_rot],
+		[0.0,     ARM + base_larm_rot],
+		[q,       0.0 + base_larm_rot],
+		[q * 2.0,-ARM + base_larm_rot],
+		[q * 3.0, 0.0 + base_larm_rot],
+		[L,       ARM + base_larm_rot],
 	])
 	_rot(a, "RightArmPivot", [
-		[0.0,  -ARM + base_rarm_rot],
-		[0.06,  0.0 + base_rarm_rot],
-		[0.12,  ARM + base_rarm_rot],
-		[0.18,  0.0 + base_rarm_rot],
-		[0.24, -ARM + base_rarm_rot],
+		[0.0,    -ARM + base_rarm_rot],
+		[q,       0.0 + base_rarm_rot],
+		[q * 2.0, ARM + base_rarm_rot],
+		[q * 3.0, 0.0 + base_rarm_rot],
+		[L,      -ARM + base_rarm_rot],
 	])
 
 	# Hands ride forward with the lean; rotation carries the pump
-	_pos(a, "LeftArmPivot",  [[0.0, base_larm + Vector2(LEAN_X, 0)], [0.24, base_larm + Vector2(LEAN_X, 0)]])
-	_pos(a, "RightArmPivot", [[0.0, base_rarm + Vector2(LEAN_X, 0)], [0.24, base_rarm + Vector2(LEAN_X, 0)]])
+	_pos(a, "LeftArmPivot",  [[0.0, base_larm + LEAN], [L, base_larm + LEAN]])
+	_pos(a, "RightArmPivot", [[0.0, base_rarm + LEAN], [L, base_rarm + LEAN]])
 
 	return a
 
