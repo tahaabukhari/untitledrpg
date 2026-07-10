@@ -72,6 +72,17 @@ var rarm_swing_mul := 1.0
 @export var run_lean_x := 2.0       ## upper-body forward shift into the run (px)
 @export var run_lean := 0.13        ## forward torso tilt (radians)
 
+@export_group("Slide (down-dodge)")
+## Feet-first baseball slide: legs lead low & forward, torso/head recline back
+## following them, back hand drags behind, front hand tracks across the body.
+@export var slide_length := 0.45     ## total slide duration (s)
+@export var slide_sink := 8.0        ## how far the whole rig drops to the ground (px)
+@export var slide_lead_leg := -1.45  ## lead leg extension forward (rad; NEGATIVE = forward)
+@export var slide_trail_leg := -0.95 ## trailing leg angle (rad)
+@export var slide_recline := -0.35   ## torso/back recline (rad; NEGATIVE = lean back)
+@export var slide_back_reach := 1.25 ## trailing hand reach back & down onto the ground (rad)
+@export var slide_front_reach := -0.55 ## leading hand follow across the body (rad)
+
 # Store the original default arm positions (before weapon overrides)
 var _default_larm: Vector2
 var _default_rarm: Vector2
@@ -1124,48 +1135,99 @@ func _make_parry() -> Animation:
 # ─── SLIDE: low forward baseball-slide (down-dodge) ─────────────────────────
 
 func _make_slide() -> Animation:
+	## Feet-first baseball slide. The legs shoot forward and lay low; the torso
+	## and head recline BACK, following the legs down; the back hand drags along
+	## the ground behind for balance while the front hand tracks across the body.
+	## Drop in fast (0→t_set), hold the slide, then pop back up on recovery.
 	var a = Animation.new()
-	a.length = 0.4
+	var L := slide_length
 	a.loop_mode = Animation.LOOP_NONE
+	a.length = L
 
-	# Whole body drops low and pitches forward
+	var t_set := L * 0.18   # fully committed into the slide
+	var t_hold := L * 0.72  # start standing back up
+	# The rig faces +x. Legs pivot at the hip: NEGATIVE rotation throws the feet
+	# FORWARD; torso NEGATIVE rotation reclines the chest BACK.
+
+	# ── Legs: shoot forward and lay low (lead leg leads, trail tucks behind) ──
+	_rot(a, "LeftLegPivot", [
+		[0.0, 0.0], [t_set, slide_lead_leg], [t_hold, slide_lead_leg], [L, 0.0],
+	])
+	_rot(a, "RightLegPivot", [
+		[0.0, 0.0], [t_set, slide_trail_leg], [t_hold, slide_trail_leg], [L, 0.0],
+	])
+	# Lead foot pushes forward and low; trailing foot stays tucked under the hips
+	_pos(a, "LeftLegPivot", [
+		[0.0, base_lleg],
+		[t_set, base_lleg + Vector2(5, 2)],
+		[t_hold, base_lleg + Vector2(6, 2)],
+		[L, base_lleg],
+	])
+	_pos(a, "RightLegPivot", [
+		[0.0, base_rleg],
+		[t_set, base_rleg + Vector2(1, 1)],
+		[t_hold, base_rleg + Vector2(1, 1)],
+		[L, base_rleg],
+	])
+
+	# ── Torso: recline BACK and low, following the legs down ──
+	_rot(a, "TorsoPivot", [
+		[0.0, 0.0], [t_set, slide_recline], [t_hold, slide_recline], [L, 0.0],
+	])
 	_pos(a, "TorsoPivot", [
-		[0.0,  base_torso + Vector2(1, 3)],
-		[0.1,  base_torso + Vector2(2, 5)],
-		[0.3,  base_torso + Vector2(2, 5)],
-		[0.4,  base_torso + Vector2(0, 1)],
+		[0.0, base_torso],
+		[t_set, base_torso + Vector2(-2, 4)],
+		[t_hold, base_torso + Vector2(-2, 4)],
+		[L, base_torso],
 	])
-	_rot(a, "TorsoPivot", [[0.0, 0.4], [0.3, 0.5], [0.4, 0.1]])
+
+	# ── Head: follows the torso back and down, still facing the slide line ──
+	_rot(a, "HeadPivot", [
+		[0.0, 0.0], [t_set, slide_recline * 0.6], [t_hold, slide_recline * 0.6], [L, 0.0],
+	])
 	_pos(a, "HeadPivot", [
-		[0.0,  base_head + Vector2(2, 3)],
-		[0.3,  base_head + Vector2(3, 4)],
-		[0.4,  base_head],
+		[0.0, base_head],
+		[t_set, base_head + Vector2(-2, 3)],
+		[t_hold, base_head + Vector2(-2, 3)],
+		[L, base_head],
 	])
 
-	# Lead leg extended forward, trailing leg tucked under
-	_rot(a, "LeftLegPivot",  [[0.0, 1.2], [0.15, 1.4], [0.3, 1.4], [0.4, 0.0]])
-	_rot(a, "RightLegPivot", [[0.0, 0.5], [0.15, 0.7], [0.3, 0.7], [0.4, 0.0]])
-	_pos(a, "LeftLegPivot",  [
-		[0.0, base_lleg + Vector2(4, 1)],
-		[0.15, base_lleg + Vector2(6, 2)],
-		[0.4, base_lleg],
+	# ── Back hand (RightArm): drags DOWN and BEHIND along the ground ──
+	_rot(a, "RightArmPivot", [
+		[0.0, base_rarm_rot],
+		[t_set, slide_back_reach + base_rarm_rot],
+		[t_hold, slide_back_reach + base_rarm_rot],
+		[L, base_rarm_rot],
 	])
-	_pos(a, "RightLegPivot", [[0.0, base_rleg + Vector2(-1, 1)], [0.4, base_rleg]])
+	_pos(a, "RightArmPivot", [
+		[0.0, base_rarm],
+		[t_set, base_rarm + Vector2(-4, 4)],
+		[t_hold, base_rarm + Vector2(-5, 5)],
+		[L, base_rarm],
+	])
 
-	# One arm back for balance, one forward
-	_rot(a, "LeftArmPivot",  [[0.0, 0.6 + base_larm_rot], [0.3, 0.7 + base_larm_rot], [0.4, base_larm_rot]])
-	_rot(a, "RightArmPivot", [[0.0, -0.7 + base_rarm_rot], [0.3, -0.8 + base_rarm_rot], [0.4, base_rarm_rot]])
-	_pos(a, "LeftArmPivot",  [[0.0, base_larm + Vector2(2, 2)], [0.4, base_larm]])
-	_pos(a, "RightArmPivot", [[0.0, base_rarm + Vector2(-3, 0)], [0.4, base_rarm]])
+	# ── Front hand (LeftArm): follows the body, reaching across/forward ──
+	_rot(a, "LeftArmPivot", [
+		[0.0, base_larm_rot],
+		[t_set, slide_front_reach + base_larm_rot],
+		[t_hold, slide_front_reach + base_larm_rot],
+		[L, base_larm_rot],
+	])
+	_pos(a, "LeftArmPivot", [
+		[0.0, base_larm],
+		[t_set, base_larm + Vector2(1, 2)],
+		[t_hold, base_larm + Vector2(1, 2)],
+		[L, base_larm],
+	])
 
-	# Sink the whole rig toward the ground
+	# ── Sink the whole rig toward the ground for the low slide ──
 	var rt := a.add_track(Animation.TYPE_VALUE)
 	a.track_set_path(rt, ".:position:y")
 	a.track_set_interpolation_type(rt, Animation.INTERPOLATION_CUBIC)
-	a.track_insert_key(rt, 0.0, 5.0)
-	a.track_insert_key(rt, 0.12, 7.0)
-	a.track_insert_key(rt, 0.3, 7.0)
-	a.track_insert_key(rt, 0.4, 0.0)
+	a.track_insert_key(rt, 0.0, 0.0)
+	a.track_insert_key(rt, t_set, slide_sink)
+	a.track_insert_key(rt, t_hold, slide_sink)
+	a.track_insert_key(rt, L, 0.0)
 
 	return a
 
