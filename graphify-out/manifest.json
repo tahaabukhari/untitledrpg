@@ -1,0 +1,157 @@
+{
+  "docs/ARCHITECTURE.md": {
+    "mtime": 1783703920.0223665,
+    "ast_hash": "c97f9272ed14eadf67fee1614da675af",
+    "semantic_hash": "c97f9272ed14eadf67fee1614da675af"
+  },
+  "docs/CODEBASE_CONTEXT.md": {
+    "mtime": 1783703920.0458944,
+    "ast_hash": "fd29446fa6e75f108eb1e334491c8d58",
+    "semantic_hash": "fd29446fa6e75f108eb1e334491c8d58"
+  },
+  "docs/COMBAT_DODGE_TRIP_MIRROR.md": {
+    "mtime": 1783703920.0727196,
+    "ast_hash": "934612f7ce8aeafa663684f859d3aae6",
+    "semantic_hash": "934612f7ce8aeafa663684f859d3aae6"
+  },
+  "docs/DUNGEON_STAGE_PLAN.md": {
+    "mtime": 1783703920.101328,
+    "ast_hash": "d4ea529233ce05d63f198bf542e49873",
+    "semantic_hash": "d4ea529233ce05d63f198bf542e49873"
+  },
+  "docs/KICKOFF_PROMPT.md": {
+    "mtime": 1783703920.1215231,
+    "ast_hash": "4dab18ef995b5662786a2fa776dcb101",
+    "semantic_hash": "4dab18ef995b5662786a2fa776dcb101"
+  },
+  "docs/MASTER_PROMPT.md": {
+    "mtime": 1783703920.170704,
+    "ast_hash": "e2269eedb6b1539120667b7584e2a280",
+    "semantic_hash": "e2269eedb6b1539120667b7584e2a280"
+  },
+  "docs/WEAPON_ITEM_ARCHITECTURE.md": {
+    "mtime": 1783703920.1928954,
+    "ast_hash": "676c4c26b32833508d5cb1f1dd8db114",
+    "semantic_hash": "676c4c26b32833508d5cb1f1dd8db114"
+  },
+  "playercontroller.gd": {
+    "mtime": 1783708770.520976,
+    "ast_hash": "ff08a2780cf24c900dbfe6f384179534",
+    "semantic_hash": "ff08a2780cf24c900dbfe6f384179534"
+  },
+  "player_animator.gd": {
+    "mtime": 1783714578.78006,
+    "ast_hash": "ec53be2e883e8f7846a4712abdc99d98",
+    "semantic_hash": "ec53be2e883e8f7846a4712abdc99d98"
+  },
+  "input_controller.gd": {
+    "mtime": 1783708746.5167048,
+    "ast_hash": "0ae92f1f8657fa140816ccd6d317685a",
+    "semantic_hash": "0ae92f1f8657fa140816ccd6d317685a"
+  },
+  "weapon_data.gd": {
+    "mtime": 1783716044.5097983,
+    "ast_hash": "e880793b362d3811e334cc19f892013e",
+    "semantic_hash": "e880793b362d3811e334cc19f892013e"
+  },
+  "joystick.gd": {
+    "mtime": 1783083205.1143856,
+    "ast_hash": "b23782268e53f28cf54615984f4425e6",
+    "semantic_hash": "b23782268e53f28cf54615984f4425e6"
+  },
+  "autoload/fx.gd": {
+    "mtime": 1783703919.7732587,
+    "ast_hash": "199a1383c1049385c40ad51c699a1047",
+    "semantic_hash": "199a1383c1049385c40ad51c699a1047"
+  },
+  "weapons/animators/weapon_animator.gd": {
+    "mtime": 1783713350.941887,
+    "ast_hash": "f9834dd06aa19cec8a8625de6d445fd2",
+    "semantic_hash": "f9834dd06aa19cec8a8625de6d445fd2"
+  },
+  "weapons/animators/fists_animator.gd": {
+    "mtime": 1774753607.5883768,
+    "ast_hash": "a06105f9c1e32dea6962deb4f91a1201",
+    "semantic_hash": "a06105f9c1e32dea6962deb4f91a1201"
+  },
+  "weapons/animators/sword_animator.gd": {
+    "mtime": 1783713816.7011766,
+    "ast_hash": "db583da2c7a09ba182d9891b29d6c1eb",
+    "semantic_hash": "db583da2c7a09ba182d9891b29d6c1eb"
+  },
+  "weapons/animators/staff_animator.gd": {
+    "mtime": 1783716089.756382,
+    "ast_hash": "255189fa97ca03073f73222d289304c9",
+    "semantic_hash": "255189fa97ca03073f73222d289304c9"
+  },
+  "weapons/animators/mage_staff_animator.gd": {
+    "mtime": 1783716107.5517867,
+    "ast_hash": "6219e0f2dbd36f856336371cd2d314e5",
+    "semantic_hash": "6219e0f2dbd36f856336371cd2d314e5"
+  },
+  "weapons/animators/wand_animator.gd": {
+    "mtime": 1783703920.894725,
+    "ast_hash": "9cdafdaaf3e081750b9c2d303e02933a",
+    "semantic_hash": "9cdafdaaf3e081750b9c2d303e02933a"
+  },
+  "weapons/animators/projectile_weapon_animator.gd": {
+    "mtime": 1783716156.734336,
+    "ast_hash": "d092e4fabb3e04fb2bda63cc4c225735",
+    "semantic_hash": "d092e4fabb3e04fb2bda63cc4c225735"
+  },
+  "weapons/animators/prayer_animator.gd": {
+    "mtime": 1783716190.159394,
+    "ast_hash": "fbe3c95d4013084141f37ff4b5bbe0ae",
+    "semantic_hash": "fbe3c95d4013084141f37ff4b5bbe0ae"
+  },
+  "weapons/behaviors/weapon_behavior.gd": {
+    "mtime": 1783703920.9025326,
+    "ast_hash": "ba262c3442b5ad36436bda7429919d4b",
+    "semantic_hash": "ba262c3442b5ad36436bda7429919d4b"
+  },
+  "weapons/behaviors/laser_behavior.gd": {
+    "mtime": 1783703920.9000056,
+    "ast_hash": "e4f7fad304d03da69bc2c212ab1c5798",
+    "semantic_hash": "e4f7fad304d03da69bc2c212ab1c5798"
+  },
+  "weapons/behaviors/heal_behavior.gd": {
+    "mtime": 1783703920.8976252,
+    "ast_hash": "9ee3a269c1f84c6e75f90865ccd03ae3",
+    "semantic_hash": "9ee3a269c1f84c6e75f90865ccd03ae3"
+  },
+  "weapons/behaviors/prayer_behavior.gd": {
+    "mtime": 1783703920.90103,
+    "ast_hash": "10b6559ec72c3bde7a9c093eddcd7df0",
+    "semantic_hash": "10b6559ec72c3bde7a9c093eddcd7df0"
+  },
+  "enemies/enemy_base.gd": {
+    "mtime": 1783703920.3605864,
+    "ast_hash": "e62775279b19ca96e8208c7c08852c1b",
+    "semantic_hash": "e62775279b19ca96e8208c7c08852c1b"
+  },
+  "enemies/boss_fourblade.gd": {
+    "mtime": 1783703920.308488,
+    "ast_hash": "6414fa7950563386d4afb0c1a6ff9031",
+    "semantic_hash": "6414fa7950563386d4afb0c1a6ff9031"
+  },
+  "enemies/mirror_warrior.gd": {
+    "mtime": 1783703920.4653811,
+    "ast_hash": "7090bad3c481256040e96687123e093f",
+    "semantic_hash": "7090bad3c481256040e96687123e093f"
+  },
+  "enemies/bombug.gd": {
+    "mtime": 1783703920.2612464,
+    "ast_hash": "6fabdd4f0b67e889c25c2d61d644550d",
+    "semantic_hash": "6fabdd4f0b67e889c25c2d61d644550d"
+  },
+  "enemies/mannequin.gd": {
+    "mtime": 1783703920.3906264,
+    "ast_hash": "4c61896c2d08b0a1c3527693c1a94f77",
+    "semantic_hash": "4c61896c2d08b0a1c3527693c1a94f77"
+  },
+  "slime.gd": {
+    "mtime": 1783703920.8502796,
+    "ast_hash": "94a82f3296e12b311ca775dd523525d0",
+    "semantic_hash": "94a82f3296e12b311ca775dd523525d0"
+  }
+}
